@@ -29,3 +29,26 @@ class VideoForm(FlaskForm):
     # file upload field for video
     file = FileField('Video')
     submit = SubmitField('Upload')
+
+# buat form untuk streams
+'''
+class Streams(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    judul = db.Column(db.String(150), nullable=False)
+    deskripsi = db.Column(db.Text, nullable=False)
+    kode_stream = db.Column(db.String(150), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('streams', lazy=True))
+
+    def __repr__(self):
+        return f'<Streams {self.judul}>'
+'''
+class StreamForm(FlaskForm):
+    judul = StringField('Judul', validators=[DataRequired(), Length(min=4, max=150)])
+    deskripsi = TextAreaField('Deskripsi', validators=[DataRequired(), Length(min=1, max=500)])
+    kode_stream = StringField('Kode Stream', validators=[DataRequired(), Length(min=4, max=150)])
+    # select field for video
+    video_id = SelectField('Video', coerce=int)
+    submit = SubmitField('Start Stream')
+    

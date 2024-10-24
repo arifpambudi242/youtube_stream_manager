@@ -128,7 +128,7 @@
                     {% else %}
                     <a href="{{ url_for('videos') }}">Videos</a>
                     <!-- streams -->
-                    <a href="#">Streams</a>
+                    <a href="{{ url_for('streams') }}">Streams</a>
                     <!-- settings -->
                     <a href="#">Settings</a>
                     <a href="{{ url_for('logout') }}">Logout</a>
@@ -152,7 +152,7 @@
             {% else %}
             <a href="{{ url_for('videos') }}">Videos</a>
             <!-- streams -->
-            <a href="#">Streams</a>
+            <a href="{{ url_for('streams') }}">Streams</a>
             <!-- settings -->
             <a href="#">Settings</a>
             <a href="{{ url_for('logout') }}">Logout</a>

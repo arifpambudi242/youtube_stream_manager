@@ -323,3 +323,32 @@ def edit_video(id):
         flash('Video berhasil diupdate', 'success')
         return redirect(url_for('edit_video', id=id))
     return render_template('edit_video.html', form=form, video=video)
+
+# streams
+@app.route('/streams', methods=['GET', 'POST'])
+@login_required
+def streams():
+    form = StreamForm()
+    streams = Streams.query.filter_by(user_id=get_session_user_id()).all()
+    videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
+    if request.method == 'POST':
+        judul = request.form['judul']
+        deskripsi = request.form['deskripsi']
+        kode_stream = request.form['kode_stream']
+        if judul == '':
+            flash('Judul tidak boleh kosong', 'error')
+            return redirect(url_for('streams'))
+        if deskripsi == '':
+            flash('Deskripsi tidak boleh kosong', 'error')
+            return redirect(url_for('streams'))
+        if kode_stream == '':
+            flash('Kode stream tidak boleh kosong', 'error')
+            return redirect(url_for('streams'))
+        video_id = request.form['video_id']
+
+        stream = Streams(judul=judul, deskripsi=deskripsi, kode_stream=kode_stream, user_id=get_session_user_id(), video_id=video_id)
+        db.session.add(stream)
+        db.session.commit()
+        flash('Stream berhasil dibuat', 'success')
+        return redirect(url_for('streams'))
+    return render_template('streams.html', form=form, streams=streams, videos=videos)
