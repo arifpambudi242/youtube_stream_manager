@@ -20,11 +20,11 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
 
-class Video(db.Model):
+class Videos(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     judul = db.Column(db.String(150), nullable=False)
     deskripsi = db.Column(db.Text, nullable=False)
-    url = db.Column(db.String(150), nullable=False)
+    path = db.Column(db.String(150), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('videos', lazy=True))

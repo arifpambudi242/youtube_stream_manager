@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, TextAreaField, SelectField, HiddenField, SubmitField
+from wtforms import StringField, PasswordField, BooleanField, TextAreaField, SelectField, HiddenField, SubmitField, FileField
 from wtforms.validators import DataRequired, Length, Email, EqualTo
 
 # buat form untuk register
@@ -25,6 +25,7 @@ class ResetPasswordForm(FlaskForm):
 # buat form untuk videos
 class VideoForm(FlaskForm):
     judul = StringField('Judul', validators=[DataRequired(), Length(min=4, max=150)])
-    deskripsi = TextAreaField('Deskripsi', validators=[DataRequired()])
-    url = StringField('URL', validators=[DataRequired()])
+    deskripsi = TextAreaField('Deskripsi', validators=[DataRequired(), Length(min=4, max=500)])
+    # file upload field for video
+    file = FileField('Video', validators=[DataRequired()])
     submit = SubmitField('Submit')

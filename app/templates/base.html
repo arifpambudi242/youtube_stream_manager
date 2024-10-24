@@ -122,7 +122,7 @@
                     <a href="/">Users</a>
                     <a href="/">Settings</a>
                     {% else %}
-                    <a href="#">Videos</a>
+                    <a href="{{ url_for('videos') }}">Videos</a>
                     <a href="#">Settings</a>
                     {% endif %}
                     {% if not user.username %}
@@ -144,7 +144,7 @@
             <a href="/">Users</a>
             <a href="/">Settings</a>
             {% else %}
-            <a href="#">Videos</a>
+            <a href="{{ url_for('videos') }}">Videos</a>
             <a href="#">Settings</a>
             {% endif %}
             {% if not user.username %}
