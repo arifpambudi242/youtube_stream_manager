@@ -1,0 +1,28 @@
+<!-- login -->
+ {% extends 'base.html' %}
+
+{% block content %}
+    <h1>Login</h1>
+    <!-- alert if flash -->
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <form action="{{ url_for('login') }}" method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.username_email.label(class="form-label") }}
+            {{ form.username_email(class="form-control", autofocus=True) }}
+        </div>
+        <div class="mb-3">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-success form-control") }}
+    </form>
+{% endblock %}
