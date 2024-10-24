@@ -21,6 +21,15 @@ from app import routes, models
 # if static files are not served make dir static
 if not os.path.exists('app/static/'):
     os.makedirs('app/static')
+# generate index.html for the first time with body text forbidden
+if not os.path.exists('app/static/index.html'):
+    with open('app/static/index.html', 'w') as f:
+        f.write('Forbidden')
+
 # if static/videos are not served make dir static/videos
 if not os.path.exists('app/static/videos'):
     os.makedirs('app/static/videos')
+
+if not os.path.exists('app/static/videos/index.html'):
+    with open('app/static/videos/index.html', 'w') as f:
+        f.write('Forbidden')

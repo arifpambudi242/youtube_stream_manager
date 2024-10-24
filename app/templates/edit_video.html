@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Edit Video</h1>
+    <!-- alert if flash -->
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <form action="{{ url_for('edit_video', id=video.id) }}" enctype="multipart/form-data" method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.judul.label(class="form-label") }}
+            {{ form.judul(class="form-control", autofocus=True) }}
+            <!-- set value -->
+            <script>
+                document.querySelector('input[name="judul"]').value = "{{ video.judul }}";
+            </script>
+        </div>
+        <div class="mb-3">
+            {{ form.deskripsi.label(class="form-label") }}
+            {{ form.deskripsi(class="form-control") }}
+            <!-- set value -->
+            <script>
+                document.querySelector('textarea[name="deskripsi"]').value = "{{ video.deskripsi }}";
+            </script>
+        </div>
+        <div class="mb-3">
+            <!-- video preview -->
+            <video controls class="form-control" style="width: 50%;">
+                <source src="{{ url_for('static', filename=video.path) }}">
+            </video>
+            {{ form.file.label(class="form-label") }}
+            <small class="text-danger">upload video if you want to change</small>
+            {{ form.file(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-success form-control") }}
+    </form>
+{% endblock %}

@@ -1,3 +1,4 @@
+import os
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from functools import wraps
 from app import app, db
@@ -256,7 +257,9 @@ def videos():
             flash('File harus berupa video', 'error')
             return redirect(url_for('videos'))
         # save file to static folder
-        filename = f'{file.filename}-{datetime.now().strftime("%Y%m%d%H%M%S")}'
+        ext = file.filename.split('.')[-1]
+        filename = file.filename.replace(f'.{ext}', '')
+        filename = f'{filename}_{datetime.now().strftime("%Y%m%d%H%M%S")}.{ext}'
         path = f'videos/{filename}'
         file.save(f'app/static/{path}')
         video = Videos(judul=judul, deskripsi=deskripsi, path=path, user_id=get_session_user_id())
@@ -276,8 +279,8 @@ def delete_video(id):
         db.session.commit()
         # delete file from static folder
         path = f'app/static/{video.path}'
-        import os
-        os.remove(path)
+        if os.path.exists(path):
+            os.remove(path)
         flash('Video berhasil dihapus', 'success')
     else:
         flash('Anda tidak memiliki akses', 'error')
@@ -288,7 +291,7 @@ def delete_video(id):
 @login_required
 def edit_video(id):
     video = Videos.query.get(id)
-    if video.user_id != get_session_user_id():
+    if video.user_id != int(get_session_user_id()):
         return redirect(url_for('videos'))
     form = VideoForm()
     if request.method == 'POST':
@@ -302,12 +305,21 @@ def edit_video(id):
             flash('Deskripsi tidak boleh kosong', 'error')
             return redirect(url_for('edit_video', id=id))
         if file.filename != '':
-            path = f'videos/{file.filename}'
+            old_path = video.path
+            ext = file.filename.split('.')[-1]
+            filename = file.filename.replace(f'.{ext}', '')
+            filename = f'{filename}_{datetime.now().strftime("%Y%m%d%H%M%S")}.{ext}'
+            path = f'videos/{filename}'
             file.save(f'app/static/{path}')
+
             video.path = path
+            # delete old file
+            path = f'app/static/{old_path}'
+            if os.path.exists(path):
+                os.remove(path)
         video.judul = judul
         video.deskripsi = deskripsi
         db.session.commit()
         flash('Video berhasil diupdate', 'success')
-        return redirect(url_for('videos'))
+        return redirect(url_for('edit_video', id=id))
     return render_template('edit_video.html', form=form, video=video)

@@ -121,14 +121,16 @@
                     <a href="/">Streams</a>
                     <a href="/">Users</a>
                     <a href="/">Settings</a>
-                    {% else %}
-                    <a href="{{ url_for('videos') }}">Videos</a>
-                    <a href="#">Settings</a>
                     {% endif %}
                     {% if not user.username %}
                     <a href="{{ url_for('register') }}">Register</a>
                     <a href="{{ url_for('login') }}">Login</a>
                     {% else %}
+                    <a href="{{ url_for('videos') }}">Videos</a>
+                    <!-- streams -->
+                    <a href="#">Streams</a>
+                    <!-- settings -->
+                    <a href="#">Settings</a>
                     <a href="{{ url_for('logout') }}">Logout</a>
                     {% endif %}
                 </div>
@@ -143,14 +145,16 @@
             <a href="/">Streams</a>
             <a href="/">Users</a>
             <a href="/">Settings</a>
-            {% else %}
-            <a href="{{ url_for('videos') }}">Videos</a>
-            <a href="#">Settings</a>
             {% endif %}
             {% if not user.username %}
             <a href="{{ url_for('register') }}">Register</a>
             <a href="{{ url_for('login') }}">Login</a>
             {% else %}
+            <a href="{{ url_for('videos') }}">Videos</a>
+            <!-- streams -->
+            <a href="#">Streams</a>
+            <!-- settings -->
+            <a href="#">Settings</a>
             <a href="{{ url_for('logout') }}">Logout</a>
             {% endif %}
         </div>
