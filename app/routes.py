@@ -5,7 +5,7 @@ import threading
 import time
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from functools import wraps
-from app import app
+from app import *
 from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
 from app.forms import *
@@ -376,22 +376,19 @@ def streams():
             end_at = datetime.strptime(end_at, '%Y-%m-%dT%H:%M')
             
         stream = Streams(judul=judul, deskripsi=deskripsi, kode_stream=kode_stream, start_at=start_at, end_at=end_at, is_repeat=is_repeat, user_id=get_session_user_id(), video_id=video_id, pid=None, is_active=False)
-            
         db.session.add(stream)
         db.session.commit()
         stream_id = stream.id
         if auto_start:
-            if start_at:
-                delay = (start_at - datetime.now()).total_seconds()
-                if delay > 0:
-                    t = threading.Thread(target=start_stream, args=(stream_id, delay))
-                    t.start()
-                else:
-                    t = threading.Thread(target=start_stream, args=(stream_id,))
-                    t.start()
-            else:
-                t = threading.Thread(target=start_stream, args=(stream_id,))
-                t.start()
+            # start_stream_youtube
+            video = Videos.query.get(video_id)
+            if video:
+                # start_stream_youtube(video.path, kode_stream, repeat=is_repeat) using thread
+                stream = Streams.query.get(stream_id)
+                pid = start_stream_youtube(video.path, kode_stream, repeat=is_repeat)
+                stream.pid = pid
+                db.session.commit()
+        
         flash('Stream berhasil dibuat', 'success')
         return redirect(url_for('streams'))
     return render_template('streams.html', form=form, streams=streams, videos=videos)
@@ -470,14 +467,17 @@ def start_stream(id):
                             start_at = stream.start_at
                             delay = (start_at - datetime.now()).total_seconds()
                             if delay > 0:
-                                t = threading.Thread(target=start_stream, args=(id, delay))
-                                t.start()
+                                pid = start_stream_youtube(video.path, stream.kode_stream, delay=delay, repeat=stream.is_repeat)
+                                stream.pid = pid
+                                db.session.commit()
                             else:
-                                t = threading.Thread(target=start_stream, args=(id,))
-                                t.start()
+                                pid = start_stream_youtube(video.path, stream.kode_stream, repeat=stream.is_repeat)
+                                stream.pid = pid
+                                db.session.commit()
                         else:
-                            t = threading.Thread(target=start_stream, args=(id,))
-                            t.start()
+                            pid = start_stream_youtube(video.path, stream.kode_stream, repeat=stream.is_repeat)
+                            stream.pid = pid
+                            db.session.commit()
                         jsonify({'status': 'success', 'message': 'Stream started'}), 200
                     except Exception as e:
                         jsonify({'status': 'failed', 'message': f'Failed to start stream: {e}'}), 500
@@ -494,8 +494,8 @@ def start_stream(id):
 def delete_stream(id):
     stream = Streams.query.get(id)
     if stream.user_id == int(get_session_user_id()):
-        if stream.is_active:
-            stop_stream(id)
+        if stream.pid:
+            stop_stream_by_pid(stream.pid)
         db.session.delete(stream)
         db.session.commit()
         flash('Stream berhasil dihapus', 'success')

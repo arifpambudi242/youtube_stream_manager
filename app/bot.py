@@ -30,13 +30,11 @@ def stream_to_youtube(video_path, stream_key, repeat=True):
     process = subprocess.Popen(command)
     return process
 
-def stop_stream(process):
-    if process:
-        try:
-            os.kill(process.pid, signal.SIGTERM)  # Send terminate signal to the process
-            process.wait()  # Wait for the process to terminate
-        except OSError as e:
-            print(f"Failed to stop process with PID {process.pid}: {e}")
+def stop_stream_by_pid(pid):
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError as e:
+        raise e
 
 def is_stream_started(process):
     return process is not None
@@ -53,4 +51,4 @@ def start_stream_youtube(video_path, stream_key, delay=0, repeat=True):
         time.sleep(delay)
     
     process = stream_to_youtube(video_path, stream_key, repeat)
-    return process
+    return process.pid
