@@ -46,21 +46,23 @@ def get_session_user_id():
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if get_session_user_id() is None:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
+        with app.app_context():    
+            if get_session_user_id() is None:
+                return redirect(url_for('login'))
+            return f(*args, **kwargs)
     return decorated_function
 
 def login_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        user_id = get_session_user_id()
-        if user_id is None:
-            return redirect(url_for('login'))
-        user = User.query.get(user_id)
-        if not user.is_admin:
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
+        with app.app_context():
+            user_id = get_session_user_id()
+            if user_id is None:
+                return redirect(url_for('login'))
+            user = User.query.get(user_id)
+            if not user.is_admin:
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
     return decorated_function
 
 class BlankUser:
