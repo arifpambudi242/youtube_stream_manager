@@ -1,6 +1,6 @@
-from app import db
 from datetime import datetime
 from enum import Enum
+from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
@@ -53,9 +53,6 @@ class Streams(db.Model):
     
     def is_started(self):
         return self.pid is not None
-    
-    def is_active(self):
-        return self.is_active
 
 def seed():
     # Check if users table is empty

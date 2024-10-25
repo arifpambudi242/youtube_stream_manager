@@ -5,14 +5,13 @@ import threading
 import time
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from functools import wraps
-from app import app, db
-from app.models import User, Videos, Streams
+from app import app
 from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
 from app.forms import *
+from app.models import *
 import pandas as pd
 import io
-
 key = None
 
 def encrypt_session_value(value):
@@ -279,8 +278,12 @@ def delete_video(id):
     video = Videos.query.get(id)
     user_id = int(get_session_user_id())
     if video.user_id == user_id:
-        db.session.delete(video)
-        db.session.commit()
+        try:
+            db.session.delete(video)
+            db.session.commit()
+        except:
+            flash('Gagal menghapus video kemungkinan karena video sedang digunakan', 'error')
+            return redirect(url_for('videos'))
         # delete file from static folder
         path = f'app/static/{video.path}'
         if os.path.exists(path):
@@ -343,6 +346,7 @@ def streams():
         end_at = request.form['end_at']
         video_id = request.form['video_id']
         is_repeat = request.form.get('is_repeat') == 'y'
+        auto_start = request.form.get('auto_start') == 'y'
         if judul == '':
             flash('Judul tidak boleh kosong', 'error')
             return redirect(url_for('streams'))
@@ -368,12 +372,120 @@ def streams():
             end_at = None
         else:
             end_at = datetime.strptime(end_at, '%Y-%m-%dT%H:%M')
+            
         stream = Streams(judul=judul, deskripsi=deskripsi, kode_stream=kode_stream, start_at=start_at, end_at=end_at, is_repeat=is_repeat, user_id=get_session_user_id(), video_id=video_id, pid=None, is_active=False)
+            
         db.session.add(stream)
         db.session.commit()
+        stream_id = stream.id
+        if auto_start:
+            if start_at:
+                delay = (start_at - datetime.now()).total_seconds()
+                if delay > 0:
+                    t = threading.Thread(target=start_stream, args=(stream_id, delay))
+                    t.start()
+                else:
+                    t = threading.Thread(target=start_stream, args=(stream_id,))
+                    t.start()
+            else:
+                t = threading.Thread(target=start_stream, args=(stream_id,))
+                t.start()
         flash('Stream berhasil dibuat', 'success')
         return redirect(url_for('streams'))
     return render_template('streams.html', form=form, streams=streams, videos=videos)
+
+
+def check_youtube_stream(stream_url):
+    """
+    Memeriksa apakah ada stream aktif di server RTMP YouTube menggunakan `ffmpeg`.
+    
+    Parameters:
+    stream_url (str): URL lengkap RTMP YouTube (termasuk stream key).
+
+    Returns:
+    bool: True jika stream aktif, False jika tidak.
+    """
+    try:
+        # Jalankan perintah ffmpeg untuk memeriksa aliran streaming
+        result = subprocess.run(
+            ["ffmpeg", "-i", stream_url, "-t", "3", "-f", "null", "-"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=10
+        )
+        # Cek apakah hasil stderr mengandung pesan "Input/output error" atau serupa, 
+        # yang menandakan bahwa stream tidak aktif
+        if b"Input/output error" in result.stderr or b"Could not" in result.stderr:
+            return False
+        return True
+    except subprocess.TimeoutExpired:
+        # Jika ffmpeg timeout, kemungkinan besar stream tidak aktif
+        return False
+
+
+
+# stream checker
+@app.route('/check_stream/<stream_key>', methods=['GET'])
+@login_required
+def check_stream(stream_key):
+    stream = Streams.query.filter_by(kode_stream=stream_key).first()
+    if stream:
+        if stream.user_id == int(get_session_user_id()):
+            video = Videos.query.get(stream.video_id)
+            if video:
+                stream_key = stream.kode_stream
+                youtube_rtmp_url = f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'
+                stream_url = youtube_rtmp_url
+                is_active = check_youtube_stream(stream_url)
+                if is_active:
+                    stream.is_active = True
+                    db.session.commit()
+                    jsonify({'status': 'success', 'message': 'Stream is active'}), 200
+                else:
+                    jsonify({'status': 'failed', 'message': 'Stream is not active'}), 404
+                    
+        else:
+            jsonify({'status': 'failed', 'message': 'Anda tidak memiliki akses'}), 403
+
+# start stream
+@app.route('/start_stream/<int:id>', methods=['GET'])
+@login_required
+def start_stream(id):
+    stream = Streams.query.get(id)
+    if stream:
+        if stream.user_id == int(get_session_user_id()):
+            video = Videos.query.get(stream.video_id)
+            if video:
+                stream_key = stream.kode_stream
+                youtube_rtmp_url = f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'
+                stream_url = youtube_rtmp_url
+                is_active = check_youtube_stream(stream_url)
+                if is_active:
+                    jsonify({'status': 'failed', 'message': 'Stream is already active'}), 400
+                else:
+                    try:
+                        if stream.start_at:
+                            start_at = stream.start_at
+                            delay = (start_at - datetime.now()).total_seconds()
+                            if delay > 0:
+                                t = threading.Thread(target=start_stream, args=(id, delay))
+                                t.start()
+                            else:
+                                t = threading.Thread(target=start_stream, args=(id,))
+                                t.start()
+                        else:
+                            t = threading.Thread(target=start_stream, args=(id,))
+                            t.start()
+                        jsonify({'status': 'success', 'message': 'Stream started'}), 200
+                    except Exception as e:
+                        jsonify({'status': 'failed', 'message': f'Failed to start stream: {e}'}), 500
+            else:
+                jsonify({'status': 'failed', 'message': 'Video not found'}), 404
+        else:
+            jsonify({'status': 'failed', 'message': 'Anda tidak memiliki akses'}), 403
+    else:
+        jsonify({'status': 'failed', 'message': 'Stream not found'}), 404
+                        
 
 @app.route('/delete_stream/<int:id>', methods=['GET'])
 @login_required
@@ -443,25 +555,9 @@ def edit_stream(id):
         return redirect(url_for('edit_stream', id=id))
     return render_template('edit_stream.html', form=form, stream=stream, videos=videos)
 
-def stop_stream(id):
-    stream = Streams.query.get(id)
-    if stream:
-        if stream.user_id == int(get_session_user_id()):
-            try:
-                # Stop the process specifically using PID
-                if stream.pid:
-                    os.kill(stream.pid, signal.SIGTERM)  # Send terminate signal to the process
-                stream.is_active = False
-                db.session.commit()
-                jsonify({'status': 'success', 'message': f'Stream with PID {stream.pid} has been stopped'})
-            except OSError as e:
-                jsonify({'status': 'failed', 'message': f'Failed to stop process with PID {stream.pid}: {e}'})
-        else:
-            jsonify({'status': 'failed', 'message': 'Anda tidak memiliki akses'})
-    else:
-        jsonify({'status': 'failed', 'message': 'Stream tidak ditemukan'})
+
 
 @app.route('/stop_stream/<int:id>', methods=['GET'])
 @login_required
-def stop_stream_(id):
+def stop_stream(id):
     return stop_stream(id)

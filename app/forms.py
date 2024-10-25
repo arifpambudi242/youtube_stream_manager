@@ -28,7 +28,7 @@ class VideoForm(FlaskForm):
     deskripsi = TextAreaField('Deskripsi', validators=[DataRequired(), Length(min=1, max=500)])
     # file upload field for video
     file = FileField('Video')
-    submit = SubmitField('Upload')
+    submit = SubmitField('Submit')
 
 # buat form untuk streams
 '''
@@ -50,4 +50,5 @@ class StreamForm(FlaskForm):
     kode_stream = StringField('Kode Stream', validators=[DataRequired(), Length(min=4, max=150)])
     is_repeat = BooleanField('Repeat?')
     submit = SubmitField('Start Stream')
+    auto_start = BooleanField('Auto Start?')
     

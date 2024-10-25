@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from .config import Config
+from .bot import *
 # csrf
 from flask_wtf.csrf import CSRFProtect
 import os
@@ -17,7 +18,6 @@ migrate = Migrate(app, db)
 # csrf
 csrf = CSRFProtect(app)
 from app import routes, models
-
 # if static files are not served make dir static
 if not os.path.exists('app/static/'):
     os.makedirs('app/static')
