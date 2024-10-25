@@ -2,3 +2,10 @@
 env
 secret
 *.db
+__pycache__
+migrations
+instance
+*.pyc
+*.pyo
+*.pyd
+app/static/videos
