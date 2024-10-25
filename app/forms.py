@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, TextAreaField, SelectField, HiddenField, SubmitField, FileField
+from wtforms import StringField, PasswordField, BooleanField, TextAreaField, SelectField, HiddenField, SubmitField, FileField, DateTimeField
 from wtforms.validators import DataRequired, Length, Email, EqualTo
 
 # buat form untuk register
@@ -46,9 +46,8 @@ class Streams(db.Model):
 '''
 class StreamForm(FlaskForm):
     judul = StringField('Judul', validators=[DataRequired(), Length(min=4, max=150)])
-    deskripsi = TextAreaField('Deskripsi', validators=[DataRequired(), Length(min=1, max=500)])
+    deskripsi = TextAreaField('Deskripsi', validators=[DataRequired(), Length(min=1, max=1000)])
     kode_stream = StringField('Kode Stream', validators=[DataRequired(), Length(min=4, max=150)])
-    # select field for video
-    video_id = SelectField('Video', coerce=int)
+    is_repeat = BooleanField('Repeat?')
     submit = SubmitField('Start Stream')
     

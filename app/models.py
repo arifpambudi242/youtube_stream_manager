@@ -38,12 +38,24 @@ class Streams(db.Model):
     deskripsi = db.Column(db.Text, nullable=False)
     kode_stream = db.Column(db.String(150), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    start_at = db.Column(db.DateTime)
+    end_at = db.Column(db.DateTime)
+    is_repeat = db.Column(db.Boolean, default=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('streams', lazy=True))
     video_id = db.Column(db.Integer, db.ForeignKey('videos.id'), nullable=False)
     video = db.relationship('Videos', backref=db.backref('streams', lazy=True))
+    pid = db.Column(db.Integer)
+    is_active = db.Column(db.Boolean, default=False)
     def __repr__(self):
         return f'<Streams {self.judul}>'
+    
+    def is_started(self):
+        return self.pid is not None
+    
+    def is_active(self):
+        return self.is_active
 
 def seed():
     # Check if users table is empty

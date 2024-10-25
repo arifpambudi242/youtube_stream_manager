@@ -1,63 +1,111 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Streams</h1>
-    <!-- alert if flash -->
-    {% with messages = get_flashed_messages(with_categories=True) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStreamModal">Add Stream</a>
-    <div class="row">
-        {% for stream in streams %}
-            <div class="col-md-4">
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ stream.judul }}</h5>
-                        <p class="card-text">{{ stream.deskripsi }}</p>
-                        <video controls class="form-control" style="width: 100%;">
-                            <source src="{{ url_for('static', filename=stream.path) }}">
-                        </video>
-                        <a href="{{ url_for('edit_stream', id=stream.id) }}" class="btn btn-warning">Edit</a>
-                        <a href="{{ url_for('delete_stream', id=stream.id) }}" class="btn btn-danger">Delete</a>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-
-    <!-- modal add streams -->
-    <div class="modal fade" id="addStreamModal" tabindex="-1" aria-labelledby="addStreamModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addStreamModalLabel">Add Stream</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form action="" enctype="multipart/form-data" method="post">
-                        {{ form.hidden_tag() }}
-                        <div class="mb-3">
-                            {{ form.judul.label(class="form-label") }}
-                            {{ form.judul(class="form-control", autofocus=True) }}
-                        </div>
-                        <div class="mb-3">
-                            {{ form.deskripsi.label(class="form-label") }}
-                            {{ form.deskripsi(class="form-control") }}
-                        </div>
-                        <div class="mb-3">
-                            {{ form.video_id.label(class="form-label") }}
-                            {{ form.video_id(class="form-control") }}
-                        </div>
-                        <button type="submit" class="btn btn-primary form-control">Add Stream</button>
-                    </form>
-                </div>
+<h1>Streams</h1>
+<!-- alert if flash -->
+{% with messages = get_flashed_messages(with_categories=True) %}
+{% if messages %}
+{% for category, message in messages %}
+<div
+    class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">
+    {{ message }}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+<a href="#" id="add_stream" class="btn btn-success">Add Stream <i class="bi bi-plus"></i></a>
+<div class="row">
+    {% for stream in streams %}
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">{{ stream.judul }}</h5>
+                <p class="card-text">{{ stream.deskripsi }}</p>
+                <p class="card-text">Start at: {{ stream.start_at }}</p>
+                <p class="card-text">End at: {{ stream.end_at }}</p>
+                <p class="card-text">Kode Stream: {{ stream.kode_stream }}</p>
+                <p class="card-text">Video: {{ stream.video.judul }}</p>
+                <p class="card-text">Status: {% if stream.is_active %} Active {% else %} Inactive {% endif %}</p>
+                <p class="card-text">Repeat: {% if stream.is_repeat %} Yes {% else %} No {% endif %}</p>
+                
+                <video controls class="form-control" style="width: 100%;">
+                    <source src="{{ url_for('static', filename=stream.video.path) }}">
+                </video>
+                <a href="{{ url_for('edit_stream', id=stream.id) }}"
+                    class="btn btn-warning">Edit</a>
+                <a href="{{ url_for('delete_stream', id=stream.id) }}"
+                    class="btn btn-danger">Delete</a>
             </div>
         </div>
     </div>
-    {% endblock %}
+    {% endfor %}
+</div>
+
+<!-- modal add streams -->
+<div class="modal fade" id="addStreamModal" tabindex="-1"
+    aria-labelledby="addStreamModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addStreamModalLabel">Add Stream</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action enctype="multipart/form-data" method="post">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.judul.label(class="form-label") }}
+                        {{ form.judul(class="form-control", autofocus=True) }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.deskripsi.label(class="form-label") }}
+                        {{ form.deskripsi(class="form-control") }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.kode_stream.label(class="form-label") }}
+                        {{ form.kode_stream(class="form-control") }}
+                    </div>
+                    <div class="mb-3">
+                        <select name="video_id" id="video" class="form-control" required>
+                            {% if videos|length == 0 %}
+                            <option value="">No Video - Upload first</option>
+                            {% else %}  
+                            <option value="">Select a Video</option>
+                            {% endif %}
+                            {% for video in videos %}
+                            <option value="{{ video.id }}">{{ video.judul }} - {{ video.deskripsi|truncate(20, True) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="start_at">Start at (Optional)</label>
+                        <input type="datetime-local" name="start_at" id="start_at" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_at">End at (Optional)</label>
+                        <input type="datetime-local" name="end_at" id="end_at" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <!-- is_repeat -->
+                        {{ form.is_repeat.label(class="form-check-label") }}
+                        {{ form.is_repeat(class="form-check-input") }}
+                    </div>
+                    <button type="submit" class="btn btn-primary form-control">Add Stream</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('#add_stream').click(function () {
+            $('input[name="judul"]').focus();
+            $('#addStreamModal').modal('show');
+        });
+    });
+</script>
+{% endblock %}

@@ -1,4 +1,8 @@
 import os
+import signal
+import subprocess
+import threading
+import time
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from functools import wraps
 from app import app, db
@@ -335,6 +339,10 @@ def streams():
         judul = request.form['judul']
         deskripsi = request.form['deskripsi']
         kode_stream = request.form['kode_stream']
+        start_at = request.form['start_at']
+        end_at = request.form['end_at']
+        video_id = request.form['video_id']
+        is_repeat = request.form.get('is_repeat') == 'y'
         if judul == '':
             flash('Judul tidak boleh kosong', 'error')
             return redirect(url_for('streams'))
@@ -344,11 +352,116 @@ def streams():
         if kode_stream == '':
             flash('Kode stream tidak boleh kosong', 'error')
             return redirect(url_for('streams'))
-        video_id = request.form['video_id']
-
-        stream = Streams(judul=judul, deskripsi=deskripsi, kode_stream=kode_stream, user_id=get_session_user_id(), video_id=video_id)
+        if Streams.query.filter_by(kode_stream=kode_stream).first():
+            flash('Kode stream sudah ada', 'error')
+            return redirect(url_for('streams'))
+        if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
+            flash('Anda tidak memiliki akses', 'error')
+            return redirect(url_for('streams'))
+        if start_at == '':
+            # langsung mulai tanpa delay
+            start_at = None
+        else:
+            # from convert from this format '2024-10-25T13:18' to like time()
+            start_at = datetime.strptime(start_at, '%Y-%m-%dT%H:%M')
+        if end_at == '':
+            end_at = None
+        else:
+            end_at = datetime.strptime(end_at, '%Y-%m-%dT%H:%M')
+        stream = Streams(judul=judul, deskripsi=deskripsi, kode_stream=kode_stream, start_at=start_at, end_at=end_at, is_repeat=is_repeat, user_id=get_session_user_id(), video_id=video_id, pid=None, is_active=False)
         db.session.add(stream)
         db.session.commit()
         flash('Stream berhasil dibuat', 'success')
         return redirect(url_for('streams'))
     return render_template('streams.html', form=form, streams=streams, videos=videos)
+
+@app.route('/delete_stream/<int:id>', methods=['GET'])
+@login_required
+def delete_stream(id):
+    stream = Streams.query.get(id)
+    if stream.user_id == int(get_session_user_id()):
+        if stream.is_active:
+            stop_stream(id)
+        db.session.delete(stream)
+        db.session.commit()
+        flash('Stream berhasil dihapus', 'success')
+    else:
+        flash('Anda tidak memiliki akses', 'error')
+    return redirect(url_for('streams'))
+
+# edit stream
+@app.route('/edit_stream/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_stream(id):
+    stream = Streams.query.get(id)
+    if stream.user_id != int(get_session_user_id()):
+        return redirect(url_for('streams'))
+    form = StreamForm()
+    videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
+    if request.method == 'POST':
+        judul = request.form['judul']
+        deskripsi = request.form['deskripsi']
+        kode_stream = request.form['kode_stream']
+        start_at = request.form['start_at']
+        end_at = request.form['end_at']
+        video_id = request.form['video_id']
+        is_repeat = request.form.get('is_repeat') == 'y'
+        if judul == '':
+            flash('Judul tidak boleh kosong', 'error')
+            return redirect(url_for('edit_stream', id=id))
+        if deskripsi == '':
+            flash('Deskripsi tidak boleh kosong', 'error')
+            return redirect(url_for('edit_stream', id=id))
+        if kode_stream == '':
+            flash('Kode stream tidak boleh kosong', 'error')
+            return redirect(url_for('edit_stream', id=id))
+        if Streams.query.filter_by(kode_stream=kode_stream).first():
+            flash('Kode stream sudah ada', 'error')
+            return redirect(url_for('edit_stream', id=id))
+        if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
+            flash('Anda tidak memiliki akses', 'error')
+            return redirect(url_for('edit_stream', id=id))
+        if start_at == '':
+            # langsung mulai tanpa delay
+            start_at = None
+        else:
+            # from convert from this format '2024-10-25T13:18' to like time()
+            start_at = datetime.strptime(start_at, '%Y-%m-%dT%H:%M')
+        if end_at == '':
+            end_at = None
+        else:
+            end_at = datetime.strptime(end_at, '%Y-%m-%dT%H:%M')
+        stream.judul = judul
+        stream.deskripsi = deskripsi
+        stream.kode_stream = kode_stream
+        stream.start_at = start_at
+        stream.end_at = end_at
+        stream.is_repeat = is_repeat
+        stream.video_id = video_id
+        db.session.commit()
+        flash('Stream berhasil diupdate', 'success')
+        return redirect(url_for('edit_stream', id=id))
+    return render_template('edit_stream.html', form=form, stream=stream, videos=videos)
+
+def stop_stream(id):
+    stream = Streams.query.get(id)
+    if stream:
+        if stream.user_id == int(get_session_user_id()):
+            try:
+                # Stop the process specifically using PID
+                if stream.pid:
+                    os.kill(stream.pid, signal.SIGTERM)  # Send terminate signal to the process
+                stream.is_active = False
+                db.session.commit()
+                jsonify({'status': 'success', 'message': f'Stream with PID {stream.pid} has been stopped'})
+            except OSError as e:
+                jsonify({'status': 'failed', 'message': f'Failed to stop process with PID {stream.pid}: {e}'})
+        else:
+            jsonify({'status': 'failed', 'message': 'Anda tidak memiliki akses'})
+    else:
+        jsonify({'status': 'failed', 'message': 'Stream tidak ditemukan'})
+
+@app.route('/stop_stream/<int:id>', methods=['GET'])
+@login_required
+def stop_stream_(id):
+    return stop_stream(id)
