@@ -12,6 +12,7 @@ def check_scheduled_stream():
         streams = Streams.query.all()
         for stream in streams:
             # start_at >= current_time start stream
+            print(f'start at = {stream.start_at} and current time = {datetime.utcnow()}')
             if stream.start_at and stream.start_at <= datetime.utcnow():
                 # check if stream is already started
                 if not stream.is_started():
