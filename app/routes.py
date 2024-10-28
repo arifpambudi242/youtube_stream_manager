@@ -394,35 +394,6 @@ def streams():
     return render_template('streams.html', form=form, streams=streams, videos=videos)
 
 
-def check_youtube_stream(stream_url):
-    """
-    Memeriksa apakah ada stream aktif di server RTMP YouTube menggunakan `ffmpeg`.
-    
-    Parameters:
-    stream_url (str): URL lengkap RTMP YouTube (termasuk stream key).
-
-    Returns:
-    bool: True jika stream aktif, False jika tidak.
-    """
-    try:
-        # Jalankan perintah ffmpeg untuk memeriksa aliran streaming
-        result = subprocess.run(
-            ["ffmpeg", "-i", stream_url, "-t", "3", "-f", "null", "-"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=10
-        )
-        # Cek apakah hasil stderr mengandung pesan "Input/output error" atau serupa, 
-        # yang menandakan bahwa stream tidak aktif
-        if b"Input/output error" in result.stderr or b"Could not" in result.stderr:
-            return False
-        return True
-    except subprocess.TimeoutExpired:
-        # Jika ffmpeg timeout, kemungkinan besar stream tidak aktif
-        return False
-
-
-
 # stream checker
 @app.route('/check_stream/<stream_key>', methods=['GET'])
 @login_required
