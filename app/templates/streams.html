@@ -76,6 +76,7 @@
                         {{ form.kode_stream(class="form-control") }}
                     </div>
                     <div class="mb-3">
+                        <label for="video">Video</label>
                         <select name="video_id" id="video" class="form-control" required>
                             {% if videos|length == 0 %}
                             <option value="">No Video - Upload first</option>
@@ -98,12 +99,12 @@
                     <div class="mb-3">
                         <!-- is_repeat -->
                         {{ form.is_repeat.label(class="form-check-label") }}
-                        {{ form.is_repeat(class="form-check-input") }}
+                        {{ form.is_repeat(class="form-check-input form-control") }}
                     </div>
                     <div class="mb-3">
                         <!-- auto_start -->
                         {{ form.auto_start.label(class="form-check-label") }}
-                        {{ form.auto_start(class="form-check-input") }}
+                        {{ form.auto_start(class="form-check-input form-control") }}
                     </div>
                     <button type="submit" class="btn btn-primary form-control">Add Stream</button>
                 </form>

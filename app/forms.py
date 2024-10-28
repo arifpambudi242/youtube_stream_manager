@@ -25,7 +25,7 @@ class ResetPasswordForm(FlaskForm):
 # buat form untuk videos
 class VideoForm(FlaskForm):
     judul = StringField('Judul', validators=[DataRequired(), Length(min=4, max=150)])
-    deskripsi = TextAreaField('Deskripsi', validators=[DataRequired(), Length(min=1, max=500)])
+    deskripsi = TextAreaField('Deskripsi', default='-', validators=[DataRequired(), Length(min=1, max=500)])
     # file upload field for video
     file = FileField('Video')
     submit = SubmitField('Submit')
@@ -46,7 +46,7 @@ class Streams(db.Model):
 '''
 class StreamForm(FlaskForm):
     judul = StringField('Judul', validators=[DataRequired(), Length(min=4, max=150)])
-    deskripsi = TextAreaField('Deskripsi', validators=[DataRequired(), Length(min=1, max=1000)])
+    deskripsi = TextAreaField('Deskripsi', default='-', validators=[DataRequired(), Length(min=1, max=1000)])
     kode_stream = StringField('Kode Stream', validators=[DataRequired(), Length(min=4, max=150)])
     is_repeat = BooleanField('Repeat?')
     submit = SubmitField('Start Stream')
