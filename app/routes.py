@@ -395,27 +395,6 @@ def streams():
 
 
 # stream checker
-@app.route('/check_stream/<stream_key>', methods=['GET'])
-@login_required
-def check_stream(stream_key):
-    stream = Streams.query.filter_by(kode_stream=stream_key).first()
-    if stream:
-        if stream.user_id == int(get_session_user_id()):
-            video = Videos.query.get(stream.video_id)
-            if video:
-                stream_key = stream.kode_stream
-                youtube_rtmp_url = f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'
-                stream_url = youtube_rtmp_url
-                is_active = check_youtube_stream(stream_url)
-                if is_active:
-                    stream.is_active = True
-                    db.session.commit()
-                    jsonify({'status': 'success', 'message': 'Stream is active'}), 200
-                else:
-                    jsonify({'status': 'failed', 'message': 'Stream is not active'}), 404
-                    
-        else:
-            jsonify({'status': 'failed', 'message': 'Anda tidak memiliki akses'}), 403
 
 # start stream
 @app.route('/start_stream/<int:id>', methods=['GET'])
@@ -427,37 +406,17 @@ def start_stream(id):
             video = Videos.query.get(stream.video_id)
             if video:
                 stream_key = stream.kode_stream
-                youtube_rtmp_url = f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'
-                stream_url = youtube_rtmp_url
-                is_active = check_youtube_stream(stream_url)
-                if is_active:
-                    jsonify({'status': 'failed', 'message': 'Stream is already active'}), 400
-                else:
-                    try:
-                        if stream.start_at:
-                            start_at = stream.start_at
-                            delay = (start_at - datetime.now()).total_seconds()
-                            if delay > 0:
-                                pid = start_stream_youtube(video.path, stream.kode_stream, delay=delay, repeat=stream.is_repeat)
-                                stream.pid = pid
-                                db.session.commit()
-                            else:
-                                pid = start_stream_youtube(video.path, stream.kode_stream, repeat=stream.is_repeat)
-                                stream.pid = pid
-                                db.session.commit()
-                        else:
-                            pid = start_stream_youtube(video.path, stream.kode_stream, repeat=stream.is_repeat)
-                            stream.pid = pid
-                            db.session.commit()
-                        jsonify({'status': 'success', 'message': 'Stream started'}), 200
-                    except Exception as e:
-                        jsonify({'status': 'failed', 'message': f'Failed to start stream: {e}'}), 500
+                pid = start_stream_youtube(video.path, stream_key, repeat=stream.is_repeat)
+                stream.pid = pid
+                db.session.commit()
+                flash('Stream berhasil dimulai', 'success')
             else:
-                jsonify({'status': 'failed', 'message': 'Video not found'}), 404
+                flash('Video tidak ditemukan', 'error')
         else:
-            jsonify({'status': 'failed', 'message': 'Anda tidak memiliki akses'}), 403
+            flash('Anda tidak memiliki akses', 'error')
     else:
-        jsonify({'status': 'failed', 'message': 'Stream not found'}), 404
+        flash('Stream tidak ditemukan', 'error')
+    return redirect(url_for('streams'))
                         
 
 @app.route('/delete_stream/<int:id>', methods=['GET'])
