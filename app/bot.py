@@ -34,7 +34,7 @@ def stop_stream_by_pid(pid):
     try:
         os.kill(pid, signal.SIGTERM)
     except OSError as e:
-        raise e
+        pass
 
 def is_stream_started(process):
     return process is not None

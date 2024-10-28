@@ -1,21 +1,20 @@
 {% extends 'base.html' %}
-
 {% block content %}
-    <h1>Edit Video</h1>
+    <h1 class="mb-4">✏️ Edit Video</h1>
+    
     <!-- alert if flash -->
     {% with messages = get_flashed_messages(with_categories=True) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">
-                    {{ message }}
-                </div>
+                <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">{{ message }}</div>
             {% endfor %}
         {% endif %}
     {% endwith %}
+
     <form action="{{ url_for('edit_video', id=video.id) }}" enctype="multipart/form-data" method="post">
         {{ form.hidden_tag() }}
         <div class="mb-3">
-            {{ form.judul.label(class="form-label") }}
+            {{ form.judul.label(class="form-label") }} <i class="bi bi-pencil"></i>
             {{ form.judul(class="form-control", autofocus=True) }}
             <!-- set value -->
             <script>
@@ -23,7 +22,7 @@
             </script>
         </div>
         <div class="mb-3">
-            {{ form.deskripsi.label(class="form-label") }}
+            {{ form.deskripsi.label(class="form-label") }} <i class="bi bi-file-text"></i>
             {{ form.deskripsi(class="form-control") }}
             <!-- set value -->
             <script>
@@ -32,13 +31,23 @@
         </div>
         <div class="mb-3">
             <!-- video preview -->
-            <video controls class="form-control" style="width: 50%;">
-                <source src="{{ url_for('static', filename=video.path) }}">
-            </video>
-            {{ form.file.label(class="form-label") }}
-            <small class="text-danger">upload video if you want to change</small>
+            <div class="video-container" style="width: 50%; margin: auto;">
+                <video controls class="form-control">
+                    <source src="{{ url_for('static', filename=video.path) }}">
+                </video>
+            </div>
+            {{ form.file.label(class="form-label mt-3") }} <i class="bi bi-upload"></i>
+            <small class="text-danger">Upload video if you want to change</small>
             {{ form.file(class="form-control") }}
         </div>
         {{ form.submit(class="btn btn-success form-control") }}
     </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('input[name="judul"]').focus();
+    });
+</script>
 {% endblock %}
