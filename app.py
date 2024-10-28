@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from app import *
 from app.models import Streams, seed
@@ -12,8 +12,8 @@ def check_scheduled_stream():
         streams = Streams.query.all()
         for stream in streams:
             # start_at >= current_time start stream
-            print(f'start at = {stream.start_at} and current time = {datetime.utcnow()}')
-            if stream.start_at and stream.start_at <= datetime.utcnow():
+            # hasilnya start at = 2024-10-28 02:08:00 and current time = 2024-10-28 13:09:07.944764 buat perbandingan yang benar
+            if stream.start_at and stream.start_at - datetime.now() <= timedelta(seconds=1):
                 # check if stream is already started
                 if not stream.is_started():
                     # start stream
@@ -21,7 +21,7 @@ def check_scheduled_stream():
                     stream.is_active = True
                     db.session.commit()
             # end_at >= current_time stop stream
-            if stream.end_at and stream.end_at <= datetime.utcnow():
+            if stream.end_at and stream.end_at - datetime.now() <= timedelta(seconds=1):
                 # check if stream is already started
                 if stream.is_started():
                     # stop stream
