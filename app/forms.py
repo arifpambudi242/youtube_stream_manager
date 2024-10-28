@@ -27,7 +27,7 @@ class VideoForm(FlaskForm):
     judul = StringField('Judul', validators=[DataRequired(), Length(min=4, max=150)])
     deskripsi = TextAreaField('Deskripsi', default='-', validators=[DataRequired(), Length(min=1, max=500)])
     # file upload field for video
-    file = FileField('Video')
+    file = FileField('Video', validators=[], render_kw={"accept": "video/*"})
     submit = SubmitField('Submit')
 
 # buat form untuk streams

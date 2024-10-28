@@ -1,49 +1,43 @@
 {% extends 'base.html' %}
-
 {% block content %}
-<h1>Streams</h1>
+<h1>🎥 Streams 🎶</h1>
+<p>Manage your Streams with ease</p>
+
 <!-- alert if flash -->
 {% with messages = get_flashed_messages(with_categories=True) %}
 {% if messages %}
-{% for category, message in messages %}
-<div
-    class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">
-    {{ message }}
-</div>
-{% endfor %}
+    {% for category, message in messages %}
+        <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">{{ message }}</div>
+    {% endfor %}
 {% endif %}
 {% endwith %}
-<a href="#" id="add_stream" class="btn btn-success">Add Stream <i class="bi bi-plus"></i></a>
-<div class="row">
+
+<a href="#" id="add_stream" class="btn btn-success">➕ Add Stream</a>
+
+<div class="row mt-4">
     {% for stream in streams %}
     <div class="col-md-4">
-        <div class="card mb-3">
+        <div class="card mb-3 shadow-sm">
             <div class="card-body">
-                <h5 class="card-title">{{ stream.judul }}</h5>
+                <h5 class="card-title">🎵 {{ stream.judul }}</h5>
                 <p class="card-text">{{ stream.deskripsi }}</p>
-                <p class="card-text">Start at: {{ stream.start_at }}</p>
-                <p class="card-text">End at: {{ stream.end_at }}</p>
-                <p class="card-text">Kode Stream: {{ stream.kode_stream }}</p>
-                <p class="card-text">Video: {{ stream.video.judul }}</p>
-                <p class="card-text">Status: {% if stream.is_active %} Active {% else %} Inactive {% endif %}</p>
-                <p class="card-text">Repeat: {% if stream.is_repeat %} Yes {% else %} No {% endif %}</p>
-
-                <video controls class="form-control" style="width: 100%;">
+                <p class="card-text"><strong>Start at:</strong> 🎬 {{ stream.start_at }}</p>
+                <p class="card-text"><strong>End at:</strong> 🛑 {{ stream.end_at }}</p>
+                <p class="card-text"><strong>Kode Stream:</strong> 🔑 {{ stream.kode_stream }}</p>
+                <p class="card-text"><strong>Video:</strong> 📹 {{ stream.video.judul }}</p>
+                <p class="card-text"><strong>Status:</strong> {% if stream.is_active %}✔️ Active{% else %}❌ Inactive{% endif %}</p>
+                <p class="card-text"><strong>Repeat:</strong> {% if stream.is_repeat %}🔁 Yes{% else %}❌ No{% endif %}</p>
+                <video controls class="form-control mb-3" style="width: 100%;">
                     <source src="{{ url_for('static', filename=stream.video.path) }}">
                 </video>
-                <!-- start stream -->
-                 {% if not stream.is_active %}
-                <a href="{{ url_for('start_stream', id=stream.id) }}"
-                    class="btn btn-primary">Start</a>
+
+                {% if not stream.is_active %}
+                    <a href="{{ url_for('start_stream', id=stream.id) }}" class="btn btn-primary">▶️ Start</a>
                 {% else %}
-                <!-- stop stream -->
-                <a href="{{ url_for('stop_stream', id=stream.id) }}"
-                    class="btn btn-danger">Stop</a>
+                    <a href="{{ url_for('stop_stream', id=stream.id) }}" class="btn btn-danger">⏸️ Stop</a>
                 {% endif %}
-                <a href="{{ url_for('edit_stream', id=stream.id) }}"
-                    class="btn btn-warning">Edit</a>
-                <a href="{{ url_for('delete_stream', id=stream.id) }}"
-                    class="btn btn-danger">Delete</a>
+                <a href="{{ url_for('edit_stream', id=stream.id) }}" class="btn btn-warning">✏️ Edit</a>
+                <a href="{{ url_for('delete_stream', id=stream.id) }}" class="btn btn-danger">🗑️ Delete</a>
             </div>
         </div>
     </div>
@@ -51,17 +45,15 @@
 </div>
 
 <!-- modal add streams -->
-<div class="modal fade" id="addStreamModal" tabindex="-1"
-    aria-labelledby="addStreamModalLabel" aria-hidden="true">
+<div class="modal fade" id="addStreamModal" tabindex="-1" aria-labelledby="addStreamModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addStreamModalLabel">Add Stream</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"
-                    aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form action enctype="multipart/form-data" method="post">
+                <form action="" enctype="multipart/form-data" method="post">
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
                         {{ form.judul.label(class="form-label") }}
@@ -79,12 +71,12 @@
                         <label for="video">Video</label>
                         <select name="video_id" id="video" class="form-control" required>
                             {% if videos|length == 0 %}
-                            <option value="">No Video - Upload first</option>
-                            {% else %}  
-                            <option value="">Select a Video</option>
+                                <option value="">No Video - Upload first</option>
+                            {% else %}
+                                <option value="">Select a Video</option>
                             {% endif %}
                             {% for video in videos %}
-                            <option value="{{ video.id }}">{{ video.judul }} - {{ video.deskripsi|truncate(20, True) }}</option>
+                                <option value="{{ video.id }}">{{ video.judul }} - {{ video.deskripsi|truncate(20, True) }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -97,12 +89,10 @@
                         <input type="datetime-local" name="end_at" id="end_at" class="form-control">
                     </div>
                     <div class="mb-3">
-                        <!-- is_repeat -->
                         {{ form.is_repeat.label(class="form-check-label") }}
                         {{ form.is_repeat(class="form-check-input form-control") }}
                     </div>
                     <div class="mb-3">
-                        <!-- auto_start -->
                         {{ form.auto_start.label(class="form-check-label") }}
                         {{ form.auto_start(class="form-check-input form-control") }}
                     </div>
@@ -112,8 +102,8 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
+{% endblock %}
 {% block scripts %}
 <script>
     $(document).ready(function () {

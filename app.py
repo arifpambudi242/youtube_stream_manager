@@ -24,7 +24,7 @@ def check_scheduled_stream():
                 # check if stream is already started
                 if stream.is_started():
                     # stop stream
-                    stop_stream(stream.pid)
+                    stop_stream_by_pid(stream.pid)
                     stream.pid = None
                     stream.is_active = False
                     db.session.commit()
