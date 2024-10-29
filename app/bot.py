@@ -32,19 +32,10 @@ def stream_to_youtube(video_path, stream_key, repeat=True):
 
 def stop_stream_by_pid(pid):
     try:
-        # Check if the process exists
-        pid = int(pid)
-        os.kill(pid, signal.SIGTERM)
-        return True
-    except ProcessLookupError:
-        print(f"Process with PID {pid} does not exist.")
-        return False
-    except PermissionError:
-        print(f"No permission to terminate the process with PID {pid}.")
-        return False
-    except OSError as e:
-        print(f"Error stopping the process: {e}")
-        return False
+        os.kill(pid, signal.SIGTERM)  # Gracefully terminate the wait()  # Wait for to terminate
+        print(f"Stopped ffmpeg with PID: {pid}")
+    except Exception as e:
+        print(f"Error stopping ffmpeg: {e}")
 
 def is_stream_started(process):
     return process is not None
@@ -56,9 +47,6 @@ def is_stream_alive(pid):
         return False
     return True
 
-def start_stream_youtube(video_path, stream_key, delay=0, repeat=True):
-    if delay > 0:
-        time.sleep(delay)
-    
+def start_stream_youtube(video_path, stream_key, repeat=True):
     process = stream_to_youtube(video_path, stream_key, repeat)
     return process.pid
