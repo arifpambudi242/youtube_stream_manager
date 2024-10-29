@@ -83,7 +83,8 @@ def disabled_function(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         flash('Fitur ini sedang dinonaktifkan', 'error')
-        return redirect(url_for('index'))
+        # Redirect to referrer if available, else to index
+        return redirect(request.referrer or url_for('index'))
     return decorated_function
 class BlankUser:
     def __init__(self):
