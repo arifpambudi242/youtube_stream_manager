@@ -446,6 +446,7 @@ def start_stream(id):
         if stream.user_id == user.id or user.is_admin:
             video = Videos.query.get(stream.video_id)
             if video:
+                stream = Streams.query.get(id)
                 stream_key = stream.kode_stream
                 pid = start_stream_youtube(video.path, stream_key, repeat=stream.is_repeat)
                 stream.pid = pid
@@ -484,9 +485,10 @@ def delete_stream(id):
 def edit_stream(id):
     stream = Streams.query.get(id)
     user = User.query.get(get_session_user_id())
-    if stream.user_id != int(get_session_user_id()) or not user.is_admin:
-        flash('Anda tidak memiliki akses', 'error')
-        return redirect(url_for('streams'))
+    if not user.is_admin:
+        if stream.user_id != user.id:
+            flash('Anda tidak memiliki akses', 'error')
+            return redirect(url_for('streams'))
     if stream.is_active:
         flash('Stream sedang berjalan', 'error')
         return redirect(url_for('streams'))

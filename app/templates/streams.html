@@ -31,17 +31,13 @@
                 <p class="card-text"><strong>Status:</strong> {% if stream.is_active %}✔️ Active{% else %}❌ Inactive{% endif %}</p>
                 <p class="card-text"><strong>duration</strong> {{ stream.duration}} </p>
                 <p class="card-text"><strong>Repeat:</strong> {% if stream.is_repeat %}🔁 Yes{% else %}❌ No{% endif %}</p>
-                <video controls class="form-control mb-3" style="width: 100%;">
-                    <source src="{{ url_for('static', filename=stream.video.path) }}">
-                </video>
-
                 {% if not stream.is_active %}
-                    <a href="{{ url_for('start_stream', id=stream.id) }}" class="start_stop_stream btn btn-primary">▶️ Start</a>
+                    <a href="{{ url_for('start_stream', id=stream.id) }}" id="start-{{ stream.id }}" data-id="{{ stream.id }}" class="start_stream btn btn-primary">▶️ Start</a>
                 {% else %}
-                    <a href="{{ url_for('stop_stream', id=stream.id) }}" class="start_stop_stream btn btn-danger">⏸️ Stop</a>
+                    <a href="{{ url_for('stop_stream', id=stream.id) }}" id="stop-{{ stream.id }}" data-id="{{ stream.id }}" class="stop_stream btn btn-danger">⏸️ Stop</a>
                 {% endif %}
-                <a href="{{ url_for('edit_stream', id=stream.id) }}" class="btn btn-warning">✏️ Edit</a>
-                <a href="{{ url_for('delete_stream', id=stream.id) }}" class="btn btn-danger">🗑️ Delete</a>
+                <a href="{{ url_for('edit_stream', id=stream.id) }}" id="edit-{{ stream.id }}" class="btn btn-warning">✏️ Edit</a>
+                <a href="{{ url_for('delete_stream', id=stream.id) }}" id="delete-{{ stream.id }}" class="btn btn-danger">🗑️ Delete</a>
             </div>
         </div>
     </div>
@@ -111,20 +107,9 @@
             $('input[name="judul"]').focus();
             $('#addStreamModal').modal('show');
         });
-        $('.start_stop_stream').click(function (e) {
+        $('.start_stream').click(function (e) {
             e.preventDefault();
             /* Act on the event 
-            $.ajax({
-                url: $(this).attr('href'),
-                success: function (data) {
-                    if (data.status === 'success'){
-                        swal("Success", data.message, "success");
-                    }
-                    setInterval(function(){
-                        location.reload();
-                    }, 1500);
-                }
-            });
             */
             var btn_text = $(this).text();
             Swal.fire({
@@ -137,7 +122,7 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.ajax({
-                        url: $(this).attr('href'),
+                        url: `/start_stream/${$(this).data('id')}`,
                         success: function (data) {
                             if (data.status === 'success'){
                                 // sweet alert 2 notification
@@ -150,23 +135,42 @@
                     });
                 }
             });
-            
         });
-        $('.btn-danger').click(function (e) {
+        
+        // stop stream
+        $('.stop_stream').click(function (e) {
             e.preventDefault();
             /* Act on the event 
-            $.ajax({
-                url: $(this).attr('href'),
-                success: function (data) {
-                    if (data.status === 'success'){
-                        swal("Success", data.message, "success");
-                    }
-                    setInterval(function(){
-                        location.reload();
-                    }, 1500);
+            */
+            var btn_text = $(this).text();
+            Swal.fire({
+                title: `Are you sure to ${btn_text}?`,
+                text: "You will not be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: `Yes, ${btn_text} it!`,
+                cancelButtonText: 'No, keep it'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `/stop_stream/${$(this).data('id')}`,
+                        success: function (data) {
+                            if (data.status === 'success'){
+                                // sweet alert 2 notification
+                                Swal.fire("Success", data.message, "success");
+                            }
+                            setInterval(function(){
+                                location.reload();
+                            }, 1500);
+                        }
+                    });
                 }
             });
-            */
+        });
+
+        $('.btn-danger').click(function (e) {
+            e.preventDefault();
+
             var btn_text = $(this).text();
             Swal.fire({
                 title: `Are you sure to ${btn_text}?`,
