@@ -404,9 +404,6 @@ def streams():
         if kode_stream == '':
             flash('Kode stream tidak boleh kosong', 'error')
             return redirect(url_for('streams'))
-        if Streams.query.filter_by(kode_stream=kode_stream).first():
-            flash('Kode stream sudah ada', 'error')
-            return redirect(url_for('streams'))
         if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
             flash('Anda tidak memiliki akses', 'error')
             return redirect(url_for('streams'))
