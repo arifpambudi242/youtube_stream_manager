@@ -9,7 +9,7 @@ class User(db.Model):
     email = db.Column(db.String(150), nullable=False, unique=True)
     is_admin = db.Column(db.Boolean, default=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now())
 
     def set_password(self, password):
         """Hash password dan simpan ke password_hash"""
@@ -25,7 +25,7 @@ class Videos(db.Model):
     judul = db.Column(db.String(150), nullable=False)
     deskripsi = db.Column(db.Text, nullable=False)
     path = db.Column(db.String(150), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now())
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('videos', lazy=True))
 
@@ -37,8 +37,8 @@ class Streams(db.Model):
     judul = db.Column(db.String(150), nullable=False)
     deskripsi = db.Column(db.Text, nullable=False)
     kode_stream = db.Column(db.String(150), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now())
     start_at = db.Column(db.DateTime)
     end_at = db.Column(db.DateTime)
     is_repeat = db.Column(db.Boolean, default=False)

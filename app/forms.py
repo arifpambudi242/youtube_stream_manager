@@ -37,7 +37,7 @@ class Streams(db.Model):
     judul = db.Column(db.String(150), nullable=False)
     deskripsi = db.Column(db.Text, nullable=False)
     kode_stream = db.Column(db.String(150), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now())
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('streams', lazy=True))
 
