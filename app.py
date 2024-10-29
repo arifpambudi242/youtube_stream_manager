@@ -20,47 +20,51 @@ def check_scheduled_stream():
                 subcr.end_at = datetime.now()
                 db.session.commit()
         for stream in streams:
-            # start_at >= current_time start stream
-            if stream.is_active and stream.start_at and datetime.now() - stream.start_at <= timedelta(seconds=10):
+            # start_at == current_time start stream
+            if stream.is_active and stream.start_at and stream.start_at - datetime.now() == timedelta(seconds=1):
                 # check if stream is already started
                 if not stream.is_started():
+                    stream_ = Streams.query.filter_by(id=stream.id).first()
                     # start stream
-                    stream.pid = start_stream_youtube(stream.video.path, stream.kode_stream, repeat=stream.is_repeat)
-                    stream.is_active = True
+                    stream_.pid = start_stream_youtube(stream_.video.path, stream_.kode_stream, repeat=stream_.is_repeat)
+                    stream_.is_active = True
                     db.session.commit()
 
-            # end_at >= current_time stop stream
-            if stream.is_active and stream.end_at and datetime.now() - stream.end_at <= timedelta(seconds=10):
+            # end_at == current_time stop stream
+            if stream.is_active and stream.end_at and stream.end_at - datetime.now() == timedelta(seconds=1):
                 # check if stream is already started
+                print(f'selisih end at - current time {stream.end_at - datetime.now()}')
+                stream_ = Streams.query.filter_by(id=stream.id).first()
                 if stream.is_started():
                     # stop stream
-                    is_stream_alive = is_stream_started(stream.pid)
-                    if is_stream_alive and stream.pid:
-                        stopped = stop_stream_by_pid(stream.pid)
+                    is_stream_alive = is_stream_started(stream_.pid)
+                    if is_stream_alive and stream_.pid:
+                        stopped = stop_stream_by_pid(stream_.pid)
                         if stopped:
-                            print(f'stream stopped end at pid  {stream.pid} ')
-                    stream.pid = None
-                    stream.is_active = False
+                            print(f'stream stopped end at pid  {stream_.pid} ')
+                    stream_.pid = None
+                    stream_.is_active = False
                     db.session.commit()
 
             sub = Subscription.query.filter_by(user_id=stream.user_id, is_active=True).first()
             if stream.is_active and not sub:
+                stream_ = Streams.query.filter_by(id=stream.id).first()
                 # check if stream is already started
-                if stream.is_started():
+                if stream_.is_started():
                     # stop stream
-                    is_stream_alive = is_stream_started(stream.pid)
-                    if is_stream_alive and stream.pid:
-                        stopped = stop_stream_by_pid(stream.pid)
+                    is_stream_alive = is_stream_started(stream_.pid)
+                    if is_stream_alive and stream_.pid:
+                        stopped = stop_stream_by_pid(stream_.pid)
                         if stopped:
-                            print(f'stream stopped pid  {stream.pid} ')
-                    stream.pid = None
-                    stream.is_active = False
+                            print(f'stream stopped pid  {stream_.pid} ')
+                    stream_.pid = None
+                    stream_.is_active = False
                     db.session.commit()
             
             
 
 if __name__ == "__main__":
-    # check scheduled stream every 10 seconds
+    # check scheduled stream every 1 seconds
     import os
     from dotenv import load_dotenv
     load_dotenv()
@@ -69,7 +73,7 @@ if __name__ == "__main__":
     print(os.getenv("DOTENV_LOCATION"))
     print(DEBUG)
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=9)
+    scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=1)
     scheduler.start()
     with app.app_context():
         seed()
