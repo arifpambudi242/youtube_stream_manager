@@ -76,8 +76,6 @@ if __name__ == "__main__":
     load_dotenv()
     DEBUG = os.getenv("DEBUG")
     # print .env location
-    print(os.getenv("DOTENV_LOCATION"))
-    print(DEBUG)
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=1)
     scheduler.start()
