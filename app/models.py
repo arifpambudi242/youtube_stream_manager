@@ -84,13 +84,13 @@ def seed():
     # Check if users table is empty
     if User.query.count() == 0:
         # Create some users
-        user1 = User(username='admin', email='admin@email.com', is_admin=True)
+        user1 = User(username='admin', email='admin@email.com', is_admin=True, is_active=True)
         user1.set_password('adminpassword')
 
-        user2 = User(username='user1', email='user1@email.com', is_admin=False)
+        user2 = User(username='user1', email='user1@email.com', is_admin=False, is_active=True)
         user2.set_password('user1password')
 
-        user3 = User(username='user2', email='user2@email.com', is_admin=False)
+        user3 = User(username='user2', email='user2@email.com', is_admin=False, is_active=True)
         user3.set_password('user2password')
 
         # Add the users to the session

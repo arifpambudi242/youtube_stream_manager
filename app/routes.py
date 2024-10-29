@@ -179,7 +179,7 @@ def login():
         
         if user:
             if not user.is_active:
-                flash('Anda belum berlangganan', 'error')
+                flash('User Belum aktif', 'error')
                 return redirect(url_for('login'))
         else:
             flash('Username atau email tidak ditemukan', 'error')
