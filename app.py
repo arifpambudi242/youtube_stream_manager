@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
 from app import *
+from app.routes import *
 from app.models import Streams, User, seed, Subscription
 
 
@@ -56,6 +56,12 @@ def check_scheduled_stream():
                     stream.pid = None
                     stream.is_active = False
                     db.session.commit()
+            else:
+                # update duration
+                if stream.is_active:
+                    stream_ = Streams.query.filter_by(id=stream.id).first()
+                    stream.duration = datetime.now() - stream.start_at
+                    db.session.commit()
             
             
 
@@ -68,8 +74,7 @@ if __name__ == "__main__":
     # print .env location
     print(os.getenv("DOTENV_LOCATION"))
     print(DEBUG)
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=9)
+    scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=1)
     scheduler.start()
     with app.app_context():
         seed()
