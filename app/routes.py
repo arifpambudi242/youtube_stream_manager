@@ -387,6 +387,7 @@ def streams():
                 stream = Streams.query.get(stream_id)
                 pid = start_stream_youtube(video.path, kode_stream, repeat=is_repeat)
                 stream.pid = pid
+                stream.is_active = True
                 db.session.commit()
         
         flash('Stream berhasil dibuat', 'success')
@@ -408,15 +409,15 @@ def start_stream(id):
                 stream_key = stream.kode_stream
                 pid = start_stream_youtube(video.path, stream_key, repeat=stream.is_repeat)
                 stream.pid = pid
+                stream.is_active = True
                 db.session.commit()
-                flash('Stream berhasil dimulai', 'success')
+                return jsonify({'status': 'success', 'message': 'Stream berhasil dimulai'}), 200
             else:
-                flash('Video tidak ditemukan', 'error')
+                return jsonify({'status': 'error', 'message': 'Video tidak ditemukan'}), 404
         else:
-            flash('Anda tidak memiliki akses', 'error')
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
     else:
-        flash('Stream tidak ditemukan', 'error')
-    return redirect(url_for('streams'))
+        return jsonify({'status': 'error', 'message': 'Stream tidak ditemukan'}), 404
                         
 
 @app.route('/delete_stream/<int:id>', methods=['GET'])
@@ -492,4 +493,18 @@ def edit_stream(id):
 @app.route('/stop_stream/<int:id>', methods=['GET'])
 @login_required
 def stop_stream(id):
-    return stop_stream(id)
+    stream = Streams.query.get(id)
+    if stream:
+        if stream.user_id == int(get_session_user_id()):
+            if stream.pid:
+                stop_stream_by_pid(stream.pid)
+                stream.pid = None
+                stream.is_active = False
+                db.session.commit()
+                return jsonify({'status': 'success', 'message': 'Stream berhasil dihentikan'}), 200
+            else:
+                return jsonify({'status': 'error', 'message': 'Stream tidak sedang berjalan'}), 400
+        else:
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+    else:
+        return jsonify({'status': 'error', 'message': 'Stream tidak ditemukan'}), 404

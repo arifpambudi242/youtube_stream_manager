@@ -47,6 +47,7 @@ def check_scheduled_stream():
                 if not stream.is_started():
                     # start stream
                     stream.pid = start_stream_youtube(stream.video.path, stream.kode_stream, repeat=stream.is_repeat)
+                    stream.start_at = datetime.now()
                     stream.is_active = True
                     db.session.commit()
             # end_at >= current_time stop stream
@@ -57,6 +58,7 @@ def check_scheduled_stream():
                     # stop stream
                     stop_stream_by_pid(stream.pid)
                     stream.pid = None
+                    stream.end_at = datetime.now()
                     stream.is_active = False
                     db.session.commit()
             
@@ -65,6 +67,13 @@ def check_scheduled_stream():
                 stream = Streams.query.filter_by(id=stream.id).first()
                 if not check_youtube_stream(stream.video.path):
                     stream.is_active = False
+                    stream.end_at = datetime.now()
+                    db.session.commit()
+                else:
+                    # update stream duration
+                    if not stream.start_at:
+                        stream.start_at = datetime.now()
+                    stream.duration = datetime.now() - stream.start_at
                     db.session.commit()
 
 if __name__ == "__main__":

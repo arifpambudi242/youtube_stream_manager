@@ -47,6 +47,8 @@ class Streams(db.Model):
     video_id = db.Column(db.Integer, db.ForeignKey('videos.id'), nullable=False)
     video = db.relationship('Videos', backref=db.backref('streams', lazy=True))
     pid = db.Column(db.Integer)
+    # duration from time delta
+    duration = db.Column(db.Interval)
     is_active = db.Column(db.Boolean, default=False)
     def __repr__(self):
         return f'<Streams {self.judul}>'
