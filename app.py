@@ -21,7 +21,7 @@ def check_scheduled_stream():
                 db.session.commit()
         for stream in streams:
             # start_at >= current_time start stream
-            print(f'stream title {stream.title} start at {stream.start_at} end at {stream.end_at} datetime.now() - stream.start_at {datetime.now() - stream.start_at}')
+            print(f'stream title {stream.judul} start at {stream.start_at} end at {stream.end_at} datetime.now() - stream.start_at {datetime.now() - stream.start_at}')
             if stream.is_active and stream.start_at and datetime.now() - stream.start_at <= timedelta(seconds=10):
                 # check if stream is already started
                 if not stream.is_started():
