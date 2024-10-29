@@ -2,33 +2,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from app import *
 from app.models import Streams, User, seed, Subscription
-def check_youtube_stream(stream_url):
-    """
-    Memeriksa apakah ada stream aktif di server RTMP YouTube menggunakan `ffmpeg`.
-    
-    Parameters:
-    stream_url (str): URL lengkap RTMP YouTube (termasuk stream key).
 
-    Returns:
-    bool: True jika stream aktif, False jika tidak.
-    """
-    try:
-        # Jalankan perintah ffmpeg untuk memeriksa aliran streaming
-        result = subprocess.run(
-            ["ffmpeg", "-i", stream_url, "-t", "3", "-f", "null", "-"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=10
-        )
-        # Cek apakah hasil stderr mengandung pesan "Input/output error" atau serupa, 
-        print(f'error check stream :{result.stderr}')
-        # yang menandakan bahwa stream tidak aktif
-        if b"Input/output error" in result.stderr or b"Could not" in result.stderr:
-            return False
-        return True
-    except subprocess.TimeoutExpired:
-        # Jika ffmpeg timeout, kemungkinan besar stream tidak aktif
-        return False
 
 # cron job check scheduled stream needs to action
 def check_scheduled_stream():
@@ -60,24 +34,11 @@ def check_scheduled_stream():
                 # check if stream is already started
                 if stream.is_started():
                     # stop stream
-                    is_stream_alive = check_youtube_stream(f'rtmp://a.rtmp.youtube.com/live2/{stream.kode_stream}')
+                    is_stream_alive = is_stream_started(stream.pid)
                     if is_stream_alive and stream.pid:
                         stopped = stop_stream_by_pid(stream.pid)
                         if stopped:
-                            print('stream stopped')
-                    stream.pid = None
-                    stream.is_active = False
-                    db.session.commit()
-            
-            if stream.is_active and stream.is_repeat and stream.end_at and stream.end_at - datetime.now() <= timedelta(seconds=10):
-                # check if stream is already started
-                if stream.is_started():
-                    # stop stream
-                    is_stream_alive = check_youtube_stream(f'rtmp://a.rtmp.youtube.com/live2/{stream.kode_stream}')
-                    if is_stream_alive and stream.pid:
-                        stopped = stop_stream_by_pid(stream.pid)
-                        if stopped:
-                            print('stream stopped')
+                            print(f'stream stopped end at pid  {stream.pid} ')
                     stream.pid = None
                     stream.is_active = False
                     db.session.commit()
@@ -87,11 +48,11 @@ def check_scheduled_stream():
                 # check if stream is already started
                 if stream.is_started():
                     # stop stream
-                    is_stream_alive = check_youtube_stream(f'rtmp://a.rtmp.youtube.com/live2/{stream.kode_stream}')
+                    is_stream_alive = is_stream_started(stream.pid)
                     if is_stream_alive and stream.pid:
                         stopped = stop_stream_by_pid(stream.pid)
                         if stopped:
-                            print('stream stopped')
+                            print(f'stream stopped pid  {stream.pid} ')
                     stream.pid = None
                     stream.is_active = False
                     db.session.commit()

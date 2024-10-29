@@ -82,6 +82,7 @@ def subscription_required(f):
 def disabled_function(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        flash('Fitur ini sedang dinonaktifkan', 'error')
         return redirect(url_for('index'))
     return decorated_function
 class BlankUser:
@@ -332,6 +333,7 @@ def delete_video(id):
 @app.route('/edit_video/<int:id>', methods=['GET', 'POST'])
 @login_required
 @subscription_required
+@disabled_function
 def edit_video(id):
     video = Videos.query.get(id)
     user = User.query.get(get_session_user_id())
@@ -429,6 +431,7 @@ def streams():
                 # start_stream_youtube(video.path, kode_stream, repeat=is_repeat) using thread
                 stream = Streams.query.get(stream_id)
                 pid = start_stream_youtube(video.path, kode_stream, repeat=is_repeat)
+                stream.start_at = datetime.now()
                 stream.pid = pid
                 stream.is_active = True
                 db.session.commit()
@@ -556,7 +559,6 @@ def stop_stream(id):
         if stream.user_id == int(get_session_user_id()) or user.is_admin:
             if stream.pid:
                 stop_stream_by_pid(stream.pid)
-                stream.end_at = datetime.now()
                 stream.pid = None
                 stream.is_active = False
                 db.session.commit()
