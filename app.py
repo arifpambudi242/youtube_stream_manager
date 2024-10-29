@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from app import *
 from app.models import Streams, seed
@@ -39,15 +39,16 @@ def check_scheduled_stream():
         streams = Streams.query.all()
         for stream in streams:
             # start_at >= current_time start stream
-            if stream.start_at and stream.start_at <= datetime.utcnow():
+            if stream.start_at and stream.start_at - datetime.now() <= timedelta(seconds=10):
                 # check if stream is already started
                 if not stream.is_started():
                     # start stream
                     stream.pid = start_stream_youtube(stream.video.path, stream.kode_stream, repeat=stream.is_repeat)
                     stream.is_active = True
                     db.session.commit()
+                    
             # end_at >= current_time stop stream
-            if stream.end_at and stream.end_at <= datetime.utcnow():
+            if stream.is_active and stream.end_at and stream.end_at - datetime.now() <= timedelta(seconds=10):
                 # check if stream is already started
                 if stream.is_started():
                     # stop stream
@@ -57,6 +58,19 @@ def check_scheduled_stream():
                     stream.pid = None
                     stream.is_active = False
                     db.session.commit()
+            
+            if stream.is_active and stream.is_repeat and stream.end_at and stream.end_at - datetime.now() <= timedelta(seconds=10):
+                # check if stream is already started
+                if stream.is_started():
+                    # stop stream
+                    is_stream_alive = check_youtube_stream(f'rtmp://a.rtmp.youtube.com/live2/{stream.kode_stream}')
+                    if is_stream_alive and stream.pid:
+                        stop_stream_by_pid(stream.pid)
+                    stream.pid = None
+                    stream.is_active = False
+                    db.session.commit()
+            
+            
 
 if __name__ == "__main__":
     # check scheduled stream every 10 seconds
@@ -68,7 +82,7 @@ if __name__ == "__main__":
     print(os.getenv("DOTENV_LOCATION"))
     print(DEBUG)
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=1)
+    scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=9)
     scheduler.start()
     with app.app_context():
         seed()
