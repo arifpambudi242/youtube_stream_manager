@@ -409,6 +409,7 @@ def start_stream(id):
                 stream_key = stream.kode_stream
                 pid = start_stream_youtube(video.path, stream_key, repeat=stream.is_repeat)
                 stream.pid = pid
+                stream.start_at = datetime.now()
                 stream.is_active = True
                 db.session.commit()
                 return jsonify({'status': 'success', 'message': 'Stream berhasil dimulai'}), 200
@@ -502,6 +503,7 @@ def stop_stream(id):
         if stream.user_id == int(get_session_user_id()):
             if stream.pid:
                 stop_stream_by_pid(stream.pid)
+                stream.end_at = datetime.now()
                 stream.pid = None
                 stream.is_active = False
                 db.session.commit()

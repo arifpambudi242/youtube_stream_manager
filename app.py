@@ -60,9 +60,16 @@ def check_scheduled_stream():
 
 if __name__ == "__main__":
     # check scheduled stream every 10 seconds
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    DEBUG = os.getenv("DEBUG")
+    # print .env location
+    print(os.getenv("DOTENV_LOCATION"))
+    print(DEBUG)
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=1)
     scheduler.start()
     with app.app_context():
         seed()
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    app.run(debug=DEBUG, port=5000, host='0.0.0.0')
