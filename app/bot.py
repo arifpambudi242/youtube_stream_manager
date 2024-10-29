@@ -33,8 +33,9 @@ def stream_to_youtube(video_path, stream_key, repeat=True):
 def stop_stream_by_pid(pid):
     try:
         os.kill(pid, signal.SIGTERM)
+        return True
     except OSError as e:
-        pass
+        return False
 
 def is_stream_started(process):
     return process is not None

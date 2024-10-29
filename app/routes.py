@@ -440,6 +440,10 @@ def delete_stream(id):
 def edit_stream(id):
     stream = Streams.query.get(id)
     if stream.user_id != int(get_session_user_id()):
+        flash('Anda tidak memiliki akses', 'error')
+        return redirect(url_for('streams'))
+    if stream.is_active:
+        flash('Stream sedang berjalan', 'error')
         return redirect(url_for('streams'))
     form = StreamForm()
     videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
