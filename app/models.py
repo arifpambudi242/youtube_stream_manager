@@ -100,3 +100,33 @@ def seed():
         print('Database seeded with users!')
     else:
         print('Users table is not empty. Skipping seed.')
+
+    # Check if subscription_type table is empty
+    if SubscriptionType.query.count() == 0:
+        # Create some subscription types
+        sub1 = SubscriptionType(name='Basic', price=10000, duration=30)
+        sub2 = SubscriptionType(name='Premium', price=20000, duration=30)
+        sub3 = SubscriptionType(name='Gold', price=30000, duration=30)
+
+        # Add the subscription types to the session
+        db.session.add_all([sub1, sub2, sub3])
+        db.session.commit()
+
+        print('Database seeded with subscription types!')
+    else:
+        print('Subscription types table is not empty. Skipping seed.')
+
+    # Check if subscription table is empty
+    if Subscription.query.count() == 0:
+        # Create some subscriptions
+        sub1 = Subscription(user_id=1, subscription_type_id=1)
+        sub2 = Subscription(user_id=2, subscription_type_id=2)
+        sub3 = Subscription(user_id=3, subscription_type_id=3)
+
+        # Add the subscriptions to the session
+        db.session.add_all([sub1, sub2, sub3])
+        db.session.commit()
+
+        print('Database seeded with subscriptions!')
+    else:
+        print('Subscriptions table is not empty. Skipping seed.')
