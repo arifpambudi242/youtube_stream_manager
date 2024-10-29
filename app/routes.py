@@ -423,18 +423,6 @@ def streams():
         stream = Streams(judul=judul, deskripsi=deskripsi, kode_stream=kode_stream, start_at=start_at, end_at=end_at, is_repeat=is_repeat, user_id=get_session_user_id(), video_id=video_id, pid=None, is_active=False)
         db.session.add(stream)
         db.session.commit()
-        stream_id = stream.id
-        if not start_at:
-            # start_stream_youtube
-            video = Videos.query.get(video_id)
-            if video:
-                # start_stream_youtube(video.path, kode_stream, repeat=is_repeat) using thread
-                stream = Streams.query.get(stream_id)
-                pid = start_stream_youtube(video.path, kode_stream, repeat=is_repeat)
-                stream.start_at = datetime.now()
-                stream.pid = pid
-                stream.is_active = True
-                db.session.commit()
         
         flash('Stream berhasil dibuat', 'success')
         return redirect(url_for('streams'))
