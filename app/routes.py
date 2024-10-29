@@ -177,6 +177,14 @@ def login():
             username = request.form['username_email']
             user = User.query.filter_by(username=username).first()
         
+        if user:
+            if not user.is_active:
+                flash('Anda belum berlangganan', 'error')
+                return redirect(url_for('login'))
+        else:
+            flash('Username atau email tidak ditemukan', 'error')
+            return redirect(url_for('login'))
+        
         password = request.form['password']
         
         if password == '':

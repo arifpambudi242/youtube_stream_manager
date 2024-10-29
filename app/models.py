@@ -3,6 +3,30 @@ from enum import Enum
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
+class SubscriptionType(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    price = db.Column(db.Integer, nullable=False)
+    duration = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now())
+    is_active = db.Column(db.Boolean, default=False)
+    def __repr__(self):
+        return f'<SubscriptionType {self.name}>'
+
+class Subscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('subscriptions', lazy=True))
+    subscription_type_id = db.Column(db.Integer, db.ForeignKey('subscription_type.id'), nullable=False)
+    subscription_type = db.relationship('SubscriptionType', backref=db.backref('subscriptions', lazy=True))
+    start_at = db.Column(db.DateTime, default=datetime.now())
+    end_at = db.Column(db.DateTime)
+    is_active = db.Column(db.Boolean, default=False)
+    def __repr__(self):
+        return f'<Subscription {self.id}>'
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), nullable=False, unique=True)
@@ -11,7 +35,6 @@ class User(db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now())
     is_active = db.Column(db.Boolean, default=False)
-    
     def set_password(self, password):
         """Hash password dan simpan ke password_hash"""
         self.password_hash = generate_password_hash(password)
