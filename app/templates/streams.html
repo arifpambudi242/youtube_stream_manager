@@ -21,6 +21,9 @@
             <div class="card-body">
                 <h5 class="card-title">🎵 {{ stream.judul }}</h5>
                 <p class="card-text">{{ stream.deskripsi }}</p>
+                {% if is_admin %}
+                    <p class="card-text"><strong>Created by:</strong> {{ stream.user.username }}</p>
+                {% endif %}
                 <p class="card-text"><strong>Start at:</strong> 🎬 {{ stream.start_at }}</p>
                 <p class="card-text"><strong>End at:</strong> 🛑 {{ stream.end_at }}</p>
                 <p class="card-text"><strong>Kode Stream:</strong> 🔑 {{ stream.kode_stream }}</p>
@@ -82,20 +85,16 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="start_at">Start at (Optional)</label>
-                        <input type="datetime-local" name="start_at" id="start_at" class="form-control">
+                        {{ form.start_at.label(class="form-label") }} <i class="bi bi-clock"></i>
+                        {{ form.start_at(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="end_at">End at (Optional)</label>
-                        <input type="datetime-local" name="end_at" id="end_at" class="form-control">
+                        {{ form.end_at.label(class="form-label") }} <i class="bi bi-clock"></i>
+                        {{ form.end_at(class="form-control") }}
                     </div>
                     <div class="mb-3">
                         {{ form.is_repeat.label(class="form-check-label") }}
                         {{ form.is_repeat(class="form-check-input form-control") }}
-                    </div>
-                    <div class="mb-3">
-                        {{ form.auto_start.label(class="form-check-label") }}
-                        {{ form.auto_start(class="form-check-input form-control") }}
                     </div>
                     <button type="submit" class="btn btn-primary form-control">Add Stream</button>
                 </form>
@@ -114,18 +113,84 @@
         });
         $('.start_stop_stream').click(function (e) {
             e.preventDefault();
-            // ajax to href
+            /* Act on the event 
             $.ajax({
                 url: $(this).attr('href'),
                 success: function (data) {
                     if (data.status === 'success'){
-                        alert(data.message);
+                        swal("Success", data.message, "success");
                     }
                     setInterval(function(){
                         location.reload();
                     }, 1500);
                 }
             });
+            */
+            var btn_text = $(this).text();
+            Swal.fire({
+                title: `Are you sure to ${btn_text}?`,
+                text: "You will not be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: `Yes, ${btn_text} it!`,
+                cancelButtonText: 'No, keep it'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: $(this).attr('href'),
+                        success: function (data) {
+                            if (data.status === 'success'){
+                                // sweet alert 2 notification
+                                Swal.fire("Success", data.message, "success");
+                            }
+                            setInterval(function(){
+                                location.reload();
+                            }, 1500);
+                        }
+                    });
+                }
+            });
+            
+        });
+        $('.btn-danger').click(function (e) {
+            e.preventDefault();
+            /* Act on the event 
+            $.ajax({
+                url: $(this).attr('href'),
+                success: function (data) {
+                    if (data.status === 'success'){
+                        swal("Success", data.message, "success");
+                    }
+                    setInterval(function(){
+                        location.reload();
+                    }, 1500);
+                }
+            });
+            */
+            var btn_text = $(this).text();
+            Swal.fire({
+                title: `Are you sure to ${btn_text}?`,
+                text: "You will not be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: `Yes, ${btn_text} it!`,
+                cancelButtonText: 'No, keep it'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: $(this).attr('href'),
+                        success: function (data) {
+                            if (data.status === 'success'){
+                                // sweet alert 2 notification
+                                Swal.fire("Success", data.message, "success").then((result) => {
+                                    location.reload();
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+            
         });
     });
 </script>

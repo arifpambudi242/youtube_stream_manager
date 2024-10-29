@@ -15,19 +15,11 @@
         {{ form.hidden_tag() }}
         <div class="mb-3">
             {{ form.judul.label(class="form-label") }} <i class="bi bi-pencil"></i>
-            {{ form.judul(class="form-control", autofocus=True) }}
-            <!-- set value -->
-            <script>
-                document.querySelector('input[name="judul"]').value = "{{ video.judul }}";
-            </script>
+            {{ form.judul(class="form-control", autofocus=True, value=video.judul if video else '') }}
         </div>
         <div class="mb-3">
             {{ form.deskripsi.label(class="form-label") }} <i class="bi bi-file-text"></i>
-            {{ form.deskripsi(class="form-control") }}
-            <!-- set value -->
-            <script>
-                document.querySelector('textarea[name="deskripsi"]').value = "{{ video.deskripsi }}";
-            </script>
+            {{ form.deskripsi(class="form-control", value=video.deskripsi if video else '') }}
         </div>
         <div class="mb-3">
             <!-- video preview -->

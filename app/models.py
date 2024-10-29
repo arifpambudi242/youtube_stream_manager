@@ -119,9 +119,9 @@ def seed():
     # Check if subscription table is empty
     if Subscription.query.count() == 0:
         # Create some subscriptions
-        sub1 = Subscription(user_id=1, subscription_type_id=1)
-        sub2 = Subscription(user_id=2, subscription_type_id=2)
-        sub3 = Subscription(user_id=3, subscription_type_id=3)
+        sub1 = Subscription(user_id=1, subscription_type_id=1, start_at=datetime.now(), is_active=True)
+        sub2 = Subscription(user_id=2, subscription_type_id=2, start_at=datetime.now(), is_active=True)
+        sub3 = Subscription(user_id=3, subscription_type_id=3, start_at=datetime.now(), is_active=True)
 
         # Add the subscriptions to the session
         db.session.add_all([sub1, sub2, sub3])

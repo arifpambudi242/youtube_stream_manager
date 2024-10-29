@@ -40,7 +40,7 @@ def get_session_user_id():
         except:
             continue 
         if decrypt_session_value(key_) == app.secret_key:
-            return user_id
+            return int(user_id)
     return None
 
 def login_required(f):
@@ -61,6 +61,20 @@ def login_admin_required(f):
                 return redirect(url_for('login'))
             user = User.query.get(user_id)
             if not user.is_admin:
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+    return decorated_function
+
+def subscription_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        with app.app_context():
+            user_id = get_session_user_id()
+            if user_id is None:
+                return redirect(url_for('login'))
+            sub = Subscription.query.filter_by(user_id=user_id, is_active=True).first()
+            if not sub:
+                flash('Anda belum berlangganan', 'error')
                 return redirect(url_for('index'))
             return f(*args, **kwargs)
     return decorated_function
@@ -249,9 +263,14 @@ def logout():
 # videos
 @app.route('/videos', methods=['GET', 'POST'])
 @login_required
+@subscription_required
 def videos():
     form = VideoForm()
-    videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
+    user = User.query.get(get_session_user_id())
+    if user.is_admin:
+        videos = Videos.query.all()
+    else:
+        videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
     if request.method == 'POST':
         judul = request.form['judul']
         deskripsi = request.form['deskripsi']
@@ -287,7 +306,8 @@ def videos():
 def delete_video(id):
     video = Videos.query.get(id)
     user_id = int(get_session_user_id())
-    if video.user_id == user_id:
+    user = User.query.get(user_id)
+    if video.user_id == user_id or user.is_admin:
         try:
             db.session.delete(video)
             db.session.commit()
@@ -306,9 +326,12 @@ def delete_video(id):
 # edit video
 @app.route('/edit_video/<int:id>', methods=['GET', 'POST'])
 @login_required
+@subscription_required
 def edit_video(id):
     video = Videos.query.get(id)
-    if video.user_id != int(get_session_user_id()):
+    user = User.query.get(get_session_user_id())
+    if video.user_id != int(get_session_user_id()) and not user.is_admin:
+        flash('Anda tidak memiliki akses', 'error')
         return redirect(url_for('videos'))
     form = VideoForm()
     if request.method == 'POST':
@@ -344,10 +367,18 @@ def edit_video(id):
 # streams
 @app.route('/streams', methods=['GET', 'POST'])
 @login_required
+@subscription_required
 def streams():
     form = StreamForm()
-    streams = Streams.query.filter_by(user_id=get_session_user_id()).all()
-    videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
+    # if user is admin, show all streams
+    user = User.query.get(get_session_user_id())
+    if user.is_admin:
+        streams = Streams.query.all()
+        videos = Videos.query.all()
+    else:
+        streams = Streams.query.filter_by(user_id=get_session_user_id()).all()
+        videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
+    
     if request.method == 'POST':
         judul = request.form['judul']
         deskripsi = request.form['deskripsi']
@@ -356,7 +387,6 @@ def streams():
         end_at = request.form['end_at']
         video_id = request.form['video_id']
         is_repeat = request.form.get('is_repeat') == 'y'
-        auto_start = request.form.get('auto_start') == 'y'
         if judul == '':
             flash('Judul tidak boleh kosong', 'error')
             return redirect(url_for('streams'))
@@ -387,7 +417,7 @@ def streams():
         db.session.add(stream)
         db.session.commit()
         stream_id = stream.id
-        if auto_start:
+        if not start_at:
             # start_stream_youtube
             video = Videos.query.get(video_id)
             if video:
@@ -408,10 +438,12 @@ def streams():
 # start stream
 @app.route('/start_stream/<int:id>', methods=['GET'])
 @login_required
+@subscription_required
 def start_stream(id):
     stream = Streams.query.get(id)
+    user = User.query.get(get_session_user_id())
     if stream:
-        if stream.user_id == int(get_session_user_id()):
+        if stream.user_id == user.id or user.is_admin:
             video = Videos.query.get(stream.video_id)
             if video:
                 stream_key = stream.kode_stream
@@ -433,29 +465,36 @@ def start_stream(id):
 @login_required
 def delete_stream(id):
     stream = Streams.query.get(id)
-    if stream.user_id == int(get_session_user_id()):
+    user = User.query.get(get_session_user_id())
+    if stream.user_id == int(get_session_user_id() or user.is_admin):
         if stream.pid:
             stop_stream_by_pid(stream.pid)
         db.session.delete(stream)
         db.session.commit()
-        flash('Stream berhasil dihapus', 'success')
+        return jsonify({'status': 'success', 'message': 'Stream berhasil dihapus'}), 200
     else:
-        flash('Anda tidak memiliki akses', 'error')
-    return redirect(url_for('streams'))
+        return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+    
+
 
 # edit stream
 @app.route('/edit_stream/<int:id>', methods=['GET', 'POST'])
 @login_required
+@subscription_required
 def edit_stream(id):
     stream = Streams.query.get(id)
-    if stream.user_id != int(get_session_user_id()):
+    user = User.query.get(get_session_user_id())
+    if stream.user_id != int(get_session_user_id()) or not user.is_admin:
         flash('Anda tidak memiliki akses', 'error')
         return redirect(url_for('streams'))
     if stream.is_active:
         flash('Stream sedang berjalan', 'error')
         return redirect(url_for('streams'))
     form = StreamForm()
-    videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
+    if user.is_admin:
+        videos = Videos.query.all()
+    else:
+        videos = Videos.query.filter_by(user_id=get_session_user_id()).all()
     if request.method == 'POST':
         judul = request.form['judul']
         deskripsi = request.form['deskripsi']
@@ -472,9 +511,6 @@ def edit_stream(id):
             return redirect(url_for('edit_stream', id=id))
         if kode_stream == '':
             flash('Kode stream tidak boleh kosong', 'error')
-            return redirect(url_for('edit_stream', id=id))
-        if Streams.query.filter_by(kode_stream=kode_stream).first():
-            flash('Kode stream sudah ada', 'error')
             return redirect(url_for('edit_stream', id=id))
         if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
             flash('Anda tidak memiliki akses', 'error')
@@ -508,7 +544,8 @@ def edit_stream(id):
 def stop_stream(id):
     stream = Streams.query.get(id)
     if stream:
-        if stream.user_id == int(get_session_user_id()):
+        user = User.query.get(get_session_user_id())
+        if stream.user_id == int(get_session_user_id()) or user.is_admin:
             if stream.pid:
                 stop_stream_by_pid(stream.pid)
                 stream.end_at = datetime.now()

@@ -32,9 +32,18 @@ def stream_to_youtube(video_path, stream_key, repeat=True):
 
 def stop_stream_by_pid(pid):
     try:
+        # Check if the process exists
+        pid = int(pid)
         os.kill(pid, signal.SIGTERM)
         return True
+    except ProcessLookupError:
+        print(f"Process with PID {pid} does not exist.")
+        return False
+    except PermissionError:
+        print(f"No permission to terminate the process with PID {pid}.")
+        return False
     except OSError as e:
+        print(f"Error stopping the process: {e}")
         return False
 
 def is_stream_started(process):
