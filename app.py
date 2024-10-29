@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
 from app import *
+from app.routes import *
 from app.models import Streams, User, seed, Subscription
 
 
@@ -59,6 +59,12 @@ def check_scheduled_stream():
                             print(f'stream stopped pid  {stream_.pid} ')
                     stream_.pid = None
                     stream_.is_active = False
+                    db.session.commit()
+            else:
+                # update duration
+                if stream.is_active:
+                    stream_ = Streams.query.filter_by(id=stream.id).first()
+                    stream.duration = datetime.now() - stream.start_at
                     db.session.commit()
             
             

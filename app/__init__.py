@@ -6,6 +6,8 @@ from .bot import *
 # csrf
 from flask_wtf.csrf import CSRFProtect
 import os
+from flask_socketio import SocketIO, emit
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # Inisialisasi Flask
 app = Flask(__name__)
@@ -13,6 +15,8 @@ app.config.from_object(Config)
 # Inisialisasi SQLAlchemy dan Migrate
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+socketio = SocketIO(app)
+scheduler = BackgroundScheduler()
 # seed
 
 # csrf

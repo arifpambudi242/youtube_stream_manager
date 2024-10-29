@@ -1,0 +1,33 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask WebSocket Example</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>WebSocket dengan Flask</h1>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Ketik pesan...">
+    <button id="sendMessage">Kirim Pesan</button>
+
+    <script>
+        const socket = io();
+
+        // Mengirim pesan ketika tombol diklik
+        document.getElementById('sendMessage').onclick = () => {
+            const input = document.getElementById('messageInput');
+            socket.send(input.value);
+            input.value = '';
+        };
+
+        // Menerima pesan dari server
+        socket.on('response', (msg) => {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += `<p>${msg}</p>`;
+        });
+    </script>
+</body>
+</html>

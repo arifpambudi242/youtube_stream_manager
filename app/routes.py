@@ -14,6 +14,8 @@ import pandas as pd
 import io
 key = None
 
+background_thread = None
+
 def encrypt_session_value(value):
     global key
     # make key url-safe
@@ -29,19 +31,20 @@ def decrypt_session_value(value):
     return f.decrypt(value.encode()).decode()
 
 def get_session_user_id():
-    session_key = session.keys()
-    
-    for key_ in session_key:
-        try:
-            valid_key = key_
-            user_id = decrypt_session_value(session[key_])
-            if len(user_id) > 100:  # Limit the length of user_id to 100 characters
-                continue
-        except:
-            continue 
-        if decrypt_session_value(key_) == app.secret_key:
-            return int(user_id)
-    return None
+    with app.app_context():
+        session_key = session.keys()
+        
+        for key_ in session_key:
+            try:
+                valid_key = key_
+                user_id = decrypt_session_value(session[key_])
+                if len(user_id) > 100:  # Limit the length of user_id to 100 characters
+                    continue
+            except:
+                continue 
+            if decrypt_session_value(key_) == app.secret_key:
+                return int(user_id)
+        return None
 
 def login_required(f):
     @wraps(f)
@@ -50,7 +53,7 @@ def login_required(f):
             if get_session_user_id() is None:
                 return redirect(url_for('login'))
             return f(*args, **kwargs)
-    return decorated_function
+    return decorated_function    
 
 def login_admin_required(f):
     @wraps(f)
@@ -555,3 +558,61 @@ def stop_stream(id):
             return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
     else:
         return jsonify({'status': 'error', 'message': 'Stream tidak ditemukan'}), 404
+
+
+@socketio.on('update_streams')
+def update_streams(data):
+    streams = Streams.query.all()
+    streams = [{'id': stream.id, 'judul': stream.judul, 'deskripsi': stream.deskripsi, 'kode_stream': stream.kode_stream, 'start_at': stream.start_at, 'end_at': stream.end_at, 'is_repeat': stream.is_repeat, 'user_id': stream.user_id, 'video_id': stream.video_id, 'pid': stream.pid, 'duration': stream.duration, 'is_active': stream.is_active} for stream in streams]
+    emit('update_streams', {'streams': streams})
+
+def serialize_stream(stream):
+    return {
+        'id': stream.id,
+        'judul': stream.judul,
+        'deskripsi': stream.deskripsi,
+        'kode_stream': stream.kode_stream,
+        'start_at': stream.start_at.isoformat() if stream.start_at else None,
+        'end_at': stream.end_at.isoformat() if stream.end_at else None,
+        'is_repeat': stream.is_repeat,
+        'user_id': stream.user_id,
+        'video_id': stream.video_id,
+        'pid': stream.pid,
+        'duration': str(stream.duration),
+        'is_active': stream.is_active
+    }
+
+
+def background_task_socketio():
+    current_streams_active = 0
+    current_duration_change = {}
+    while True:
+        time.sleep(1)  # Interval pengecekan
+        with app.app_context():
+            streams = Streams.query.filter_by(is_active=True).all()
+            for stream in streams:
+                if f'{stream.id}' not in current_duration_change:
+                    current_duration_change[f'{stream.id}'] = stream.duration
+                else:
+                    if current_duration_change[f'{stream.id}'] != stream.duration:
+                        current_duration_change[f'{stream.id}'] = stream.duration
+                        socketio.emit('update_duration', serialize_stream(stream))
+            if len(streams) != current_streams_active:
+                current_streams_active = len(streams)
+                # Gunakan serialize_stream untuk memastikan semua datetime jadi string
+                streams_data = [serialize_stream(stream) for stream in streams]
+                socketio.emit('update_streams', streams_data)  # Emit data jika ada perubahan
+
+# Fungsi untuk memulai background task pada server startup
+@socketio.on('connect')
+def on_connect():
+    global background_thread
+    if background_thread is None:
+        background_thread = threading.Thread(target=background_task_socketio)
+        background_thread.daemon = True
+        background_thread.start()
+    print("Client connected, background task started")
+
+@socketio.on('disconnect')
+def disconnect():
+    print('Client disconnected')

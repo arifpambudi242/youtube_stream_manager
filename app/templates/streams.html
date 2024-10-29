@@ -16,7 +16,7 @@
 
 <div class="row mt-4">
     {% for stream in streams %}
-    <div class="col-md-4">
+    <div class="col-md-4" id="stream-{{ stream.id }}">
         <div class="card mb-3 shadow-sm">
             <div class="card-body">
                 <h5 class="card-title">🎵 {{ stream.judul }}</h5>
@@ -29,7 +29,7 @@
                 <p class="card-text"><strong>Kode Stream:</strong> 🔑 {{ stream.kode_stream }}</p>
                 <p class="card-text"><strong>Video:</strong> 📹 {{ stream.video.judul }}</p>
                 <p class="card-text"><strong>Status:</strong> {% if stream.is_active %}✔️ Active{% else %}❌ Inactive{% endif %}</p>
-                <p class="card-text"><strong>duration</strong> {{ stream.duration}} </p>
+                <p class="card-text"><strong>duration</strong> <span id="duration-stream-{{ stream.id }}" >{{ stream.duration}}</span></p>
                 <p class="card-text"><strong>Repeat:</strong> {% if stream.is_repeat %}🔁 Yes{% else %}❌ No{% endif %}</p>
                 {% if not stream.is_active %}
                     <a href="{{ url_for('start_stream', id=stream.id) }}" id="start-{{ stream.id }}" data-id="{{ stream.id }}" class="start_stream btn btn-primary">▶️ Start</a>
@@ -103,6 +103,7 @@
 {% block scripts %}
 <script>
     $(document).ready(function () {
+        const socket = io();
         $('#add_stream').click(function () {
             $('input[name="judul"]').focus();
             $('#addStreamModal').modal('show');
@@ -195,6 +196,13 @@
                 }
             });
             
+        });
+        socket.on('update_streams', (msg) => {
+            window.location.reload();
+        });
+
+        socket.on('update_duration', (msg) => {
+            $('span#duration-stream-'+msg.id).text(msg.duration);
         });
     });
 </script>
