@@ -79,6 +79,11 @@ def subscription_required(f):
             return f(*args, **kwargs)
     return decorated_function
 
+def disabled_function(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        return redirect(url_for('index'))
+    return decorated_function
 class BlankUser:
     def __init__(self):
         self.is_admin = False
@@ -481,6 +486,7 @@ def delete_stream(id):
 @app.route('/edit_stream/<int:id>', methods=['GET', 'POST'])
 @login_required
 @subscription_required
+@disabled_function
 def edit_stream(id):
     stream = Streams.query.get(id)
     user = User.query.get(get_session_user_id())
