@@ -21,7 +21,7 @@ class Subscription(db.Model):
     user = db.relationship('User', backref=db.backref('subscriptions', lazy=True))
     subscription_type_id = db.Column(db.Integer, db.ForeignKey('subscription_type.id'), nullable=False)
     subscription_type = db.relationship('SubscriptionType', backref=db.backref('subscriptions', lazy=True))
-    start_at = db.Column(db.DateTime, default=datetime.now())
+    start_at = db.Column(db.DateTime)
     end_at = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=False)
     def __repr__(self):

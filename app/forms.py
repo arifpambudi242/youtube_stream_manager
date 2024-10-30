@@ -53,4 +53,7 @@ class StreamForm(FlaskForm):
     end_at = DateTimeField('End At', format='%Y-%m-%dT%H:%M', render_kw={"type": "datetime-local"})
     is_repeat = BooleanField('Repeat?')
     submit = SubmitField('Start Stream')
-    
+
+class SubscriptionForm(FlaskForm):
+    subscription_type_id = SelectField('Subscription Type', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Subscribe')

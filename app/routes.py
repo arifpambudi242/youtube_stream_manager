@@ -76,7 +76,7 @@ def subscription_required(f):
             if user_id is None:
                 return redirect(url_for('login'))
             sub = Subscription.query.filter_by(user_id=user_id, is_active=True).first()
-            if not sub:
+            if not sub and not User.query.get(user_id).is_admin:
                 flash('Anda belum berlangganan', 'error')
                 return redirect(url_for('index'))
             return f(*args, **kwargs)
@@ -596,12 +596,12 @@ def background_task_socketio():
                 else:
                     if current_duration_change[f'{stream.id}'] != stream.duration:
                         current_duration_change[f'{stream.id}'] = stream.duration
-                        socketio.emit('update_duration', serialize_stream(stream))
+                        emit('update_duration', serialize_stream(stream))
             if len(streams) != current_streams_active:
                 current_streams_active = len(streams)
                 # Gunakan serialize_stream untuk memastikan semua datetime jadi string
                 streams_data = [serialize_stream(stream) for stream in streams]
-                socketio.emit('update_streams', streams_data)  # Emit data jika ada perubahan
+                emit('update_streams', streams_data)  # Emit data jika ada perubahan
 
 # Fungsi untuk memulai background task pada server startup
 @socketio.on('connect')
@@ -616,3 +616,73 @@ def on_connect():
 @socketio.on('disconnect')
 def disconnect():
     print('Client disconnected')
+
+
+@app.route('/subscriptions', methods=['GET', 'POST'])
+@login_required
+def subscriptions():
+    form = SubscriptionForm()
+    user = User.query.get(get_session_user_id())
+    if user.is_admin:
+        # get all order by updated_at and is_active
+        subscriptions = Subscription.query.order_by(Subscription.start_at.desc(), Subscription.is_active.desc()).all()
+    else:
+        subscriptions = Subscription.query.filter_by(user_id=user.id, is_active=True).all()
+    subscription_types = SubscriptionType.query.all()
+    if request.method == 'POST':
+        if user.is_admin:
+            flash('Admin tidak bisa berlangganan', 'error')
+            return redirect(url_for('subscriptions'))
+        subscription_type_id = request.form['subscription_type_id']
+        subscription = Subscription(user_id=get_session_user_id(), subscription_type_id=subscription_type_id, is_active=False)
+        db.session.add(subscription)
+        db.session.commit()
+        flash('Berhasil berlangganan', 'success')
+        return redirect(url_for('subscriptions'))
+    return render_template('subscriptions.html', form=form, subscription_types=subscription_types, subscriptions=subscriptions)
+
+@app.route('/delete_subscription/<int:id>', methods=['GET'])
+@login_admin_required
+def delete_subscription(id):
+    subscription = Subscription.query.get(id)
+    if subscription:
+        if subscription.is_active:
+            flash('Tidak bisa menghapus subscription yang aktif', 'error')
+            return redirect(url_for('subscriptions'))
+        db.session.delete(subscription)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menghapus subscription'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+
+@app.route('/activate_subscription/<int:id>', methods=['GET'])
+@login_admin_required
+def activate_subscription(id):
+    subscription = Subscription.query.filter_by(id=id).first()
+    if subscription:
+        subscription.is_active = True
+        subscription.start_at = datetime.now()  # Mengatur waktu sekarang sebagai start_at
+        
+        # Memastikan duration adalah angka yang valid
+        duration_days = subscription.subscription_type.duration
+        if not isinstance(duration_days, int):
+            duration_days = 30
+        subscription.end_at = subscription.start_at + timedelta(days=duration_days)
+        subscription.duration = timedelta(days=duration_days)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan subscription'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+
+
+@app.route('/deactivate_subscription/<int:id>', methods=['GET'])
+@login_admin_required
+def deactivate_subscription(id):
+    subscription = Subscription.query.filter_by(id=id).first()
+    if subscription:
+        subscription.is_active = False
+        subscription.end_at = datetime.now()
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan subscription'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404

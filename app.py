@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from app import *
 from app.routes import *
 from app.models import Streams, User, seed, Subscription
+import os
 
 
 # cron job check scheduled stream needs to action
@@ -14,7 +15,7 @@ def check_scheduled_stream():
         streams = Streams.query.all()
         subscription = Subscription.query.all()
         for sub in subscription:
-            if sub.end_at and datetime.now() - sub.end_at <= timedelta(seconds=10):
+            if sub.end_at and datetime.now() - sub.end_at == timedelta(seconds=1):
                 subcr = Subscription.query.filter_by(id=sub.id).first()
                 subcr.is_active = False
                 subcr.end_at = datetime.now()

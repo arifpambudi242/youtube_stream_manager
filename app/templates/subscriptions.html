@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1> {% if not is_admin %} Active {% endif %} Subscriptions</h1>
+<p>Here are the subscriptions you have:</p>
+<ul>
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if subscriptions %}
+    <table class="table table-striped table-hover table-dark">
+        <thead>
+            <tr>
+                <th>Subscription Type</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                {% if is_admin %}
+                <th>User</th>
+                <th>Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for subscription in subscriptions %}
+            <tr>
+                <td>{{ subscription.subscription_type.name }}</td>
+                <td>{{ subscription.start_at }}</td>
+                <td>{{ subscription.end_at }}</td>
+                {% if is_admin %}
+                <td>{{ subscription.user.username }}</td>
+                <td>
+                    <a class="btn btn-danger"
+                        href="{{ url_for('delete_subscription', id=subscription.id) }}">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </a>
+                    <a class="btn btn-warning"
+                        href="{{ url_for('deactivate_subscription', id=subscription.id) }}">
+                        <i class="fas fa-pause-circle"></i> Deactivate
+                    </a>
+                    <a class="btn btn-success"
+                        href="{{ url_for('activate_subscription', id=subscription.id) }}">
+                        <i class="fas fa-play-circle"></i> Activate
+                    </a>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <li>You have no subscriptions</li>
+    <!-- add subscription -->
+    <form action="{{ url_for('subscriptions') }}" method="post">
+        {{ form.hidden_tag() }}
+        {% for sub in subscription_types %}
+        <input type="radio" name="subscription_type_id" id="sub-{{ sub.id }}"
+            value="{{ sub.id }}"> <label for="sub-{{ sub.id }}"
+            class="width-100">{{ sub.name }} Price {{ sub.price
+            }}</label><br><br>
+        {% endfor %}
+        <button class="form-control" type="submit">Subscribe</button>
+    </form>
+    {% endif %}
+</ul>
+{% endblock %}
+
+{% if is_admin %}
+{% block scripts %}
+<script>
+        $(document).ready(function() {
+            $('.btn-danger').click(function(e) {
+                e.preventDefault();
+                // sweet alert here
+                swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You will not be able to recover this subscription!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'No, keep it'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // delete the subscription
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            success: function(data) {
+                                if (data.status === 'success') {
+                                    // sweet alert 2 notification
+                                    swal.fire('Success', data.message, 'success');
+                                }
+                                setInterval(function() {
+                                    location.reload();
+                                }, 1500);
+                            }
+                        });
+                    }
+                });
+            });
+
+            $('.btn-warning').click(function(e) {
+                e.preventDefault();
+                // sweet alert here
+                swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You will not be able to recover this subscription!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, deactivate it!',
+                    cancelButtonText: 'No, keep it'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // deactivate the subscription
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            success: function(data) {
+                                if (data.status === 'success') {
+                                    // sweet alert 2 notification
+                                    swal.fire('Success', data.message, 'success');
+                                }
+                                setInterval(function() {
+                                    location.reload();
+                                }, 1500);
+                            }
+                        });
+                    }
+                });
+            });
+            $('.btn-success').click(function(e) {
+                e.preventDefault();
+                // sweet alert here
+                swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You will not be able to recover this subscription!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, activate it!',
+                    cancelButtonText: 'No, keep it'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // activate the subscription
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            success: function(data) {
+                                if (data.status === 'success') {
+                                    // sweet alert 2 notification
+                                    swal.fire('Success', data.message, 'success');
+                                }
+                                setInterval(function() {
+                                    location.reload();
+                                }, 1500);
+                            }
+                        });
+                    }
+                });
+            });
+
+        });
+</script>
+{% endblock %}
+{% endif %}
