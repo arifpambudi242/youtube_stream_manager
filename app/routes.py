@@ -15,6 +15,7 @@ import io
 key = None
 
 background_thread = None
+thread_running = False
 
 def encrypt_session_value(value):
     global key
@@ -583,6 +584,7 @@ def serialize_stream(stream):
     }
 
 
+# background_task_socketio function
 def background_task_socketio():
     current_streams_active = 0
     current_duration_change = {}
@@ -596,27 +598,40 @@ def background_task_socketio():
                 else:
                     if current_duration_change[f'{stream.id}'] != stream.duration:
                         current_duration_change[f'{stream.id}'] = stream.duration
-                        emit('update_duration', serialize_stream(stream))
+                        socketio.emit('update_duration', serialize_stream(stream))
             if len(streams) != current_streams_active:
                 current_streams_active = len(streams)
                 # Gunakan serialize_stream untuk memastikan semua datetime jadi string
                 streams_data = [serialize_stream(stream) for stream in streams]
-                emit('update_streams', streams_data)  # Emit data jika ada perubahan
+                socketio.emit('update_streams', streams_data)  # Emit data jika ada perubahan
 
-# Fungsi untuk memulai background task pada server startup
+
+# Memulai tugas latar belakang ketika klien terhubung
 @socketio.on('connect')
 def on_connect():
-    global background_thread
+    global background_thread, thread_running
     if background_thread is None:
+        thread_running = True
         background_thread = threading.Thread(target=background_task_socketio)
         background_thread.daemon = True
         background_thread.start()
     print("Client connected, background task started")
 
+# Menghentikan tugas latar belakang saat klien disconnect
 @socketio.on('disconnect')
-def disconnect():
-    print('Client disconnected')
+def on_disconnect():
+    global thread_running
+    stop_background_task()
+    print("Client disconnected, background task stopped")
 
+def stop_background_task():
+    """Hentikan hanya thread latar belakang tanpa menghentikan server"""
+    global thread_running, background_thread
+    if thread_running:
+        thread_running = False
+        background_thread.join()  # Tunggu hingga thread selesai
+        background_thread = None
+        print("Background task stopped")
 
 @app.route('/subscriptions', methods=['GET', 'POST'])
 @login_required
