@@ -130,7 +130,7 @@
                                 Swal.fire("Success", data.message, "success");
                             }
                             setInterval(function(){
-                                location.reload();
+                                
                             }, 1500);
                         }
                     });
@@ -161,7 +161,7 @@
                                 Swal.fire("Success", data.message, "success");
                             }
                             setInterval(function(){
-                                location.reload();
+                                
                             }, 1500);
                         }
                     });
@@ -188,7 +188,7 @@
                             if (data.status === 'success'){
                                 // sweet alert 2 notification
                                 Swal.fire("Success", data.message, "success").then((result) => {
-                                    location.reload();
+                                    
                                 });
                             }
                         }
@@ -199,21 +199,16 @@
         });
         var length_updated = 0;
         socket.on('update_streams', (msg) => {
-            if (msg.length == length_updated){
-                return;
-            }
-            length_updated = msg.length;
-            for (let i = 0; i < msg.length; i++) {
-                const message = msg[i];
-                const message_id = message.id;
-                if (message.user_id == {{ user.id }}){
-                    window.location.reload();
-                }
+            if (msg.user_id == {{ user.id }}){
+                // update only on .card-body
+                window.location.reload();
             }
         });
 
         socket.on('update_duration', (msg) => {
-            $('span#duration-stream-'+msg.id).text(msg.duration);
+            if (msg.user_id == {{ user.id }}){
+                $('span#duration-stream-'+msg.id).text(msg.duration);
+            }
         });
     });
 </script>

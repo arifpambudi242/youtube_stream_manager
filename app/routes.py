@@ -586,12 +586,12 @@ def serialize_stream(stream):
 
 # background_task_socketio function
 def background_task_socketio():
-    current_streams_active = 0
     current_duration_change = {}
+    current_streams_active_change = {}
     while True:
         time.sleep(1)  # Interval pengecekan
         with app.app_context():
-            streams = Streams.query.filter_by(is_active=True).all()
+            streams = Streams.query.all()
             for stream in streams:
                 if f'{stream.id}' not in current_duration_change:
                     current_duration_change[f'{stream.id}'] = stream.duration
@@ -599,11 +599,23 @@ def background_task_socketio():
                     if current_duration_change[f'{stream.id}'] != stream.duration:
                         current_duration_change[f'{stream.id}'] = stream.duration
                         socketio.emit('update_duration', serialize_stream(stream))
-            if len(streams) != current_streams_active:
-                current_streams_active = len(streams)
-                # Gunakan serialize_stream untuk memastikan semua datetime jadi string
-                streams_data = [serialize_stream(stream) for stream in streams]
-                socketio.emit('update_streams', streams_data)  # Emit data jika ada perubahan
+                if f'{stream.id}' not in current_streams_active_change:
+                    current_streams_active_change[f'{stream.id}'] = stream.is_active
+                    socketio.emit('update_streams', serialize_stream(stream))
+                else:
+                    if current_streams_active_change[f'{stream.id}'] != stream.is_active:
+                        current_streams_active_change[f'{stream.id}'] = stream.is_active
+                        socketio.emit('update_streams', serialize_stream(stream))  # Emit data jika ada perubahan
+                    to_be_deleted = []
+                    for key in current_streams_active_change.keys():
+                        stream_ = Streams.query.get(int(key))
+                        if not stream_:
+                            to_be_deleted.append(key)
+                            socketio.emit('update_streams', {'user_id': stream.user_id})
+                            continue
+                    for key in to_be_deleted:
+                        del current_streams_active_change[key]
+                    # jika tidak ditemukan stream.id pada
 
 
 # Memulai tugas latar belakang ketika klien terhubung
