@@ -197,8 +197,19 @@
             });
             
         });
+        var length_updated = 0;
         socket.on('update_streams', (msg) => {
-            window.location.reload();
+            if (msg.length == length_updated){
+                return;
+            }
+            length_updated = msg.length;
+            for (let i = 0; i < msg.length; i++) {
+                const message = msg[i];
+                const message_id = message.id;
+                if (message.user_id == {{ user.id }}){
+                    window.location.reload();
+                }
+            }
         });
 
         socket.on('update_duration', (msg) => {
