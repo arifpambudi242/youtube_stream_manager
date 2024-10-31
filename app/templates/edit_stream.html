@@ -27,7 +27,7 @@
             {{ form.deskripsi(class="form-control") }}
             <!-- set value -->
             <script>
-                document.querySelector('textarea[name="deskripsi"]').value = "{{ stream.deskripsi }}";
+                $('textarea[name="deskripsi"]').text("{{ stream.deskripsi }}");
             </script>
         </div>
         <div class="mb-3">

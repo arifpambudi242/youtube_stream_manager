@@ -123,7 +123,7 @@ def register():
     form = RegisterForm()
     user = {'username': '', 'email': ''}
     is_admin_exists = User.query.filter_by(is_admin=True).first()
-    if request.method == 'POST':
+    if request.method == 'POST' and form.validate_on_submit():
         try:
             username = request.form['username']
             email = request.form['email']
@@ -194,7 +194,7 @@ def login():
     wait_time = 5
     if get_session_user_id() is not None:
         return redirect(url_for('index'))
-    if request.method == 'POST':
+    if request.method == 'POST' and form.validate_on_submit():
         if '@' in request.form['username_email']:
             email = request.form['username_email']
             user = User.query.filter_by(email=email).first()
@@ -338,7 +338,7 @@ def delete_video(id):
 @app.route('/edit_video/<int:id>', methods=['GET', 'POST'])
 @login_required
 @subscription_required
-@disabled_function
+# @disabled_function
 def edit_video(id):
     video = Videos.query.get(id)
     user = User.query.get(get_session_user_id())
@@ -480,7 +480,7 @@ def delete_stream(id):
 @app.route('/edit_stream/<int:id>', methods=['GET', 'POST'])
 @login_required
 @subscription_required
-@disabled_function
+# @disabled_function
 def edit_stream(id):
     stream = Streams.query.get(id)
     user = User.query.get(get_session_user_id())
@@ -713,3 +713,172 @@ def deactivate_subscription(id):
         return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan subscription'}), 200
     else:
         return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+
+@app.route('/users', methods=['GET', 'POST'])
+@login_admin_required
+def users():
+    form = UserForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        password_confirm = request.form['password_confirm']
+        if username == '':
+            flash('Username tidak boleh kosong', 'error')
+            return redirect(url_for('users'))
+        if email == '':
+            flash('Email tidak boleh kosong', 'error')
+            return redirect(url_for('users'))
+        if password == '':
+            flash('Password tidak boleh kosong', 'error')
+            return redirect(url_for('users'))
+        if password_confirm == '':
+            flash('Konfirmasi password tidak boleh kosong', 'error')
+            return redirect(url_for('users'))
+        if password != password_confirm:
+            flash('Password dan konfirmasi password tidak sama', 'error')
+            return redirect(url_for('users'))
+        is_admin = request.form.get('is_admin') == 'y'
+        user = User(username=username, email=email, is_admin=is_admin)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for('users'))
+    users = User.query.all()
+    return render_template('users.html', users=users, form=form)
+
+@app.route('/delete_user/<int:id>', methods=['GET'])
+@login_admin_required
+def delete_user(id):
+    user = User.query.get(id)
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menghapus user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+@app.route('/edit_user/<int:id>', methods=['GET', 'POST'])
+@login_admin_required
+def edit_user(id):
+    user = User.query.get(id)
+    form = UserForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        if username == '':
+            flash('Username tidak boleh kosong', 'error')
+            return redirect(url_for('edit_user', id=id))
+        if email == '':
+            flash('Email tidak boleh kosong', 'error')
+            return redirect(url_for('edit_user', id=id))
+        if password and password != '':
+            if password != confirm_password:
+                flash('Password dan konfirmasi password tidak sama', 'error')
+                return redirect(url_for('edit_user', id=id))
+        is_admin = request.form.get('is_admin') == 'y'
+        user.username = username
+        user.email = email
+        user.is_admin = is_admin
+        if password:
+            user.set_password(password)
+        db.session.commit()
+        return redirect(url_for('users'))
+    return render_template('edit_user.html', form=form, user_=user)
+
+@app.route('/activate_user/<int:id>', methods=['GET'])
+@login_admin_required
+def activate_user(id):
+    user = User.query.get(id)
+    if user:
+        user.is_active = True
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+@app.route('/deactivate_user/<int:id>', methods=['GET'])
+@login_admin_required
+def deactivate_user(id):
+    if id == get_session_user_id():
+        return jsonify({'status': 'error', 'message': 'Tidak bisa menonaktifkan user sendiri'}), 403
+    user = User.query.filter_by(id=id).first()
+    if user:
+        user.is_active = False
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+#  revoke_admin
+@app.route('/revoke_admin/<int:id>', methods=['GET'])
+@login_admin_required
+def revoke_admin(id):
+    if id == get_session_user_id():
+        return jsonify({'status': 'error', 'message': 'Tidak bisa mencabut hak admin sendiri'}), 403
+    user = User.query.filter_by(id=id).first()
+    if user:
+        user.is_admin = False
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mencabut hak admin user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+# grant_admin
+@app.route('/grant_admin/<int:id>', methods=['GET'])
+@login_admin_required
+def grant_admin(id):
+    user = User.query.filter_by(id=id).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil memberikan hak admin user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+# reset_password
+@app.route('/reset_password/<int:id>', methods=['GET'])
+@login_required
+def reset_password(id):
+    logged_in_user = User.query.filter_by(id=get_session_user_id()).first()
+    user = User.query.filter_by(id=id).first()
+    if user:
+        if user.id != get_session_user_id() and not logged_in_user.is_admin:
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+        user.set_password('password')
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mereset password user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        
+
+# settings
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    form = EditUserForm()
+    user = User.query.get(get_session_user_id())
+    if request.method == 'POST' and form.validate_on_submit():
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        if username == '':
+            return jsonify({'status': 'error', 'message': 'Username tidak boleh kosong'}), 400
+        if email == '':
+            return jsonify({'status': 'error', 'message': 'Email tidak boleh kosong'}), 400
+        if password and password != '':
+            if password != confirm_password:
+                return jsonify({'status': 'error', 'message': 'Password dan konfirmasi password tidak sama'}), 400
+        user.username = username
+        user.email = email
+        if password:
+            user.set_password(password)
+        try:
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': 'Berhasil mengupdate user'}), 200
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
+    return render_template('settings.html', form=form)

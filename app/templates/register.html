@@ -19,26 +19,47 @@
         <input type="text" class="form-control" id="username" name="username" autofocus required> -->
         {{ form.username.label(class="form-label") }}
         {{ form.username(class="form-control", autofocus=True) }}
+        <!-- error -->
+        {% if form.username.errors %}
+        <small class="text-danger">{{ form.username.errors[0] }}</small>
+        {% endif %}
     </div>
     <div class="mb-3">
         {{ form.email.label(class="form-label") }}
         {{ form.email(class="form-control") }}
+        <!-- error -->
+        {% if form.email.errors %}
+        <small class="text-danger">{{ form.email.errors[0] }}</small>
+        {% endif %}
     </div>
     <div class="mb-3">
         <!-- <label for="password" class="form-label">Password:</label>
         <input type="password" class="form-control" id="password" name="password" required> -->
         {{ form.password.label(class="form-label") }}
         {{ form.password(class="form-control") }}
+        <!-- error -->
+        {% if form.password.errors %}
+        <small class="text-danger">{{ form.password.errors[0] }}</small>
+        {% endif %}
     </div>
     <div class="mb-3">
         {{ form.confirm_password.label(class="form-label") }}
         {{ form.confirm_password(class="form-control") }}
+        <!-- error -->
+        {% if form.confirm_password.errors %}
+        <small class="text-danger">{{ form.confirm_password.errors[0] }}</small>
+        {% endif %}
     </div>
     {% if not is_admin_exists %}
     <!-- checbock is_admin jika nilai is_admin_exists -->
     <div class="mb-3 form-check">
         {{ form.is_admin(class="form-check-input") }}
         {{ form.is_admin.label(class="form-check-label") }}
+
+        <!-- error -->
+        {% if form.is_admin.errors %}
+        <small class="text-danger">{{ form.is_admin.errors[0] }}</small>
+        {% endif %}
     </div>
     {% endif %}
     <!-- <button type="submit" class="btn btn-primary">Register</button> -->
