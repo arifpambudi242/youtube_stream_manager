@@ -719,31 +719,43 @@ def deactivate_subscription(id):
 def users():
     form = UserForm()
     if request.method == 'POST' and form.validate_on_submit():
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        password_confirm = request.form['password_confirm']
-        if username == '':
-            flash('Username tidak boleh kosong', 'error')
-            return redirect(url_for('users'))
-        if email == '':
-            flash('Email tidak boleh kosong', 'error')
-            return redirect(url_for('users'))
-        if password == '':
-            flash('Password tidak boleh kosong', 'error')
-            return redirect(url_for('users'))
-        if password_confirm == '':
-            flash('Konfirmasi password tidak boleh kosong', 'error')
-            return redirect(url_for('users'))
-        if password != password_confirm:
-            flash('Password dan konfirmasi password tidak sama', 'error')
-            return redirect(url_for('users'))
-        is_admin = request.form.get('is_admin') == 'y'
-        user = User(username=username, email=email, is_admin=is_admin)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        return redirect(url_for('users'))
+        try:
+            username = request.form['username']
+            email = request.form['email']
+            password = request.form['password']
+            password_confirm = request.form['password_confirm']
+            if username == '':
+                flash('Username tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if email == '':
+                flash('Email tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if password == '':
+                flash('Password tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if password_confirm == '':
+                flash('Konfirmasi password tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if password != password_confirm:
+                flash('Password dan konfirmasi password tidak sama', 'error')
+                return redirect(url_for('users'))
+            is_admin = request.form.get('is_admin') == 'y'
+            # search username or email in database
+            user = User.query.filter_by(username=username).first()
+            if user:
+                flash('Username sudah ada', 'error')
+                return jsonify({'status': 'error', 'message': 'Username sudah ada'}), 400
+            user = User.query.filter_by(email=email).first()
+            if user:
+                flash('Email sudah ada', 'error')
+                return jsonify({'status': 'error', 'message': 'Email sudah ada'}), 400
+            user = User(username=username, email=email, is_admin=is_admin)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': 'Berhasil menambahkan user'}), 200
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Gagal menambahkan user {e}'}), 400
     users = User.query.all()
     return render_template('users.html', users=users, form=form)
 

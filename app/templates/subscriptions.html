@@ -35,17 +35,18 @@
                 <td>{{ subscription.user.username }}</td>
                 <td>
                     <a class="btn btn-danger"
-                        href="{{ url_for('delete_subscription', id=subscription.id) }}">
-                        <i class="fas fa-trash-alt"></i> Delete
+                    href="{{ url_for('delete_subscription', id=subscription.id) }}">🗑️ Delete
                     </a>
+                {% if subscription.is_active %}
                     <a class="btn btn-warning"
                         href="{{ url_for('deactivate_subscription', id=subscription.id) }}">
-                        <i class="fas fa-pause-circle"></i> Deactivate
                     </a>
+                {% else %}
                     <a class="btn btn-success"
                         href="{{ url_for('activate_subscription', id=subscription.id) }}">
                         <i class="fas fa-play-circle"></i> Activate
                     </a>
+                {% endif %}
                 </td>
                 {% endif %}
             </tr>
