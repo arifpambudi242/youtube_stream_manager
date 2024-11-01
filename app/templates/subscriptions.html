@@ -40,6 +40,7 @@
                 {% if subscription.is_active %}
                     <a class="btn btn-warning"
                         href="{{ url_for('deactivate_subscription', id=subscription.id) }}">
+                        <i class="fas fa-pause-circle"></i> Deactivate
                     </a>
                 {% else %}
                     <a class="btn btn-success"
