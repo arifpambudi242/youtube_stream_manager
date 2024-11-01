@@ -15,14 +15,14 @@ def check_scheduled_stream():
         streams = Streams.query.all()
         subscription = Subscription.query.all()
         for sub in subscription:
-            if sub.end_at and datetime.now() - sub.end_at == timedelta(seconds=1):
+            if sub.end_at and datetime.now() - sub.end_at <= timedelta(seconds=1):
                 subcr = Subscription.query.filter_by(id=sub.id).first()
                 subcr.is_active = False
                 subcr.end_at = datetime.now()
                 db.session.commit()
         for stream in streams:
             # start_at == current_time start stream
-            if stream.is_active and stream.start_at and stream.start_at - datetime.now() == timedelta(seconds=1):
+            if stream.is_active and stream.start_at and stream.start_at - datetime.now() <= timedelta(seconds=1):
                 # check if stream is already started
                 if not stream.is_started():
                     stream_ = Streams.query.filter_by(id=stream.id).first()
@@ -32,7 +32,7 @@ def check_scheduled_stream():
                     db.session.commit()
 
             # end_at == current_time stop stream
-            if stream.is_active and stream.end_at and stream.end_at - datetime.now() == timedelta(seconds=1):
+            if stream.is_active and stream.end_at and datetime.now() - stream.end_at <= timedelta(seconds=1):
                 # check if stream is already started
                 print(f'selisih end at - current time {stream.end_at - datetime.now()}')
                 stream_ = Streams.query.filter_by(id=stream.id).first()
