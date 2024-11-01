@@ -19,11 +19,7 @@
         </div>
         <div class="mb-3">
             {{ form.deskripsi.label(class="form-label") }} <i class="bi bi-file-text"></i>
-            {{ form.deskripsi(class="form-control") }}
-
-            <script>
-                $('textarea[name="deskripsi"]').text("{{ video.deskripsi }}");
-            </script>
+            <textarea class="form-control" id="deskripsi" maxlength="1000" minlength="1" name="deskripsi" required="">{{ video.deskripsi }}</textarea>
         </div>
         <div class="mb-3">
             <!-- video preview -->
