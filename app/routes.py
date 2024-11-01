@@ -15,6 +15,7 @@ import io
 key = None
 
 background_thread = None
+thread_running = False
 
 def encrypt_session_value(value):
     global key
@@ -76,7 +77,7 @@ def subscription_required(f):
             if user_id is None:
                 return redirect(url_for('login'))
             sub = Subscription.query.filter_by(user_id=user_id, is_active=True).first()
-            if not sub:
+            if not sub and not User.query.get(user_id).is_admin:
                 flash('Anda belum berlangganan', 'error')
                 return redirect(url_for('index'))
             return f(*args, **kwargs)
@@ -122,7 +123,7 @@ def register():
     form = RegisterForm()
     user = {'username': '', 'email': ''}
     is_admin_exists = User.query.filter_by(is_admin=True).first()
-    if request.method == 'POST':
+    if request.method == 'POST' and form.validate_on_submit():
         try:
             username = request.form['username']
             email = request.form['email']
@@ -193,7 +194,7 @@ def login():
     wait_time = 5
     if get_session_user_id() is not None:
         return redirect(url_for('index'))
-    if request.method == 'POST':
+    if request.method == 'POST' and form.validate_on_submit():
         if '@' in request.form['username_email']:
             email = request.form['username_email']
             user = User.query.filter_by(email=email).first()
@@ -337,7 +338,7 @@ def delete_video(id):
 @app.route('/edit_video/<int:id>', methods=['GET', 'POST'])
 @login_required
 @subscription_required
-@disabled_function
+# @disabled_function
 def edit_video(id):
     video = Videos.query.get(id)
     user = User.query.get(get_session_user_id())
@@ -479,7 +480,7 @@ def delete_stream(id):
 @app.route('/edit_stream/<int:id>', methods=['GET', 'POST'])
 @login_required
 @subscription_required
-@disabled_function
+# @disabled_function
 def edit_stream(id):
     stream = Streams.query.get(id)
     user = User.query.get(get_session_user_id())
@@ -583,13 +584,14 @@ def serialize_stream(stream):
     }
 
 
+# background_task_socketio function
 def background_task_socketio():
-    current_streams_active = 0
     current_duration_change = {}
+    current_streams_active_change = {}
     while True:
         time.sleep(1)  # Interval pengecekan
         with app.app_context():
-            streams = Streams.query.filter_by(is_active=True).all()
+            streams = Streams.query.all()
             for stream in streams:
                 if f'{stream.id}' not in current_duration_change:
                     current_duration_change[f'{stream.id}'] = stream.duration
@@ -597,22 +599,301 @@ def background_task_socketio():
                     if current_duration_change[f'{stream.id}'] != stream.duration:
                         current_duration_change[f'{stream.id}'] = stream.duration
                         socketio.emit('update_duration', serialize_stream(stream))
-            if len(streams) != current_streams_active:
-                current_streams_active = len(streams)
-                # Gunakan serialize_stream untuk memastikan semua datetime jadi string
-                streams_data = [serialize_stream(stream) for stream in streams]
-                socketio.emit('update_streams', streams_data)  # Emit data jika ada perubahan
+                if f'{stream.id}' not in current_streams_active_change:
+                    current_streams_active_change[f'{stream.id}'] = stream.is_active
+                    socketio.emit('update_streams', serialize_stream(stream))
+                else:
+                    if current_streams_active_change[f'{stream.id}'] != stream.is_active:
+                        current_streams_active_change[f'{stream.id}'] = stream.is_active
+                        socketio.emit('update_streams', serialize_stream(stream))  # Emit data jika ada perubahan
+                    to_be_deleted = []
+                    for key in current_streams_active_change.keys():
+                        stream_ = Streams.query.get(int(key))
+                        if not stream_:
+                            to_be_deleted.append(key)
+                            socketio.emit('update_streams', {'user_id': stream.user_id})
+                            continue
+                    for key in to_be_deleted:
+                        del current_streams_active_change[key]
+                    # jika tidak ditemukan stream.id pada
 
-# Fungsi untuk memulai background task pada server startup
+
+# Memulai tugas latar belakang ketika klien terhubung
 @socketio.on('connect')
 def on_connect():
-    global background_thread
+    global background_thread, thread_running
     if background_thread is None:
+        thread_running = True
         background_thread = threading.Thread(target=background_task_socketio)
         background_thread.daemon = True
         background_thread.start()
     print("Client connected, background task started")
 
+# Menghentikan tugas latar belakang saat klien disconnect
 @socketio.on('disconnect')
-def disconnect():
-    print('Client disconnected')
+def on_disconnect():
+    global thread_running
+    stop_background_task()
+    print("Client disconnected, background task stopped")
+
+def stop_background_task():
+    """Hentikan hanya thread latar belakang tanpa menghentikan server"""
+    global thread_running, background_thread
+    if thread_running:
+        thread_running = False
+        background_thread.join()  # Tunggu hingga thread selesai
+        background_thread = None
+        print("Background task stopped")
+
+@app.route('/subscriptions', methods=['GET', 'POST'])
+@login_required
+def subscriptions():
+    form = SubscriptionForm()
+    user = User.query.get(get_session_user_id())
+    if user.is_admin:
+        # get all order by updated_at and is_active
+        subscriptions = Subscription.query.order_by(Subscription.start_at.desc(), Subscription.is_active.desc()).all()
+    else:
+        subscriptions = Subscription.query.filter_by(user_id=user.id, is_active=True).all()
+    subscription_types = SubscriptionType.query.all()
+    if request.method == 'POST':
+        if user.is_admin:
+            flash('Admin tidak bisa berlangganan', 'error')
+            return redirect(url_for('subscriptions'))
+        subscription_type_id = request.form['subscription_type_id']
+        subscription = Subscription(user_id=get_session_user_id(), subscription_type_id=subscription_type_id, is_active=False)
+        db.session.add(subscription)
+        db.session.commit()
+        flash('Berhasil berlangganan', 'success')
+        return redirect(url_for('subscriptions'))
+    return render_template('subscriptions.html', form=form, subscription_types=subscription_types, subscriptions=subscriptions)
+
+@app.route('/delete_subscription/<int:id>', methods=['GET'])
+@login_admin_required
+def delete_subscription(id):
+    subscription = Subscription.query.get(id)
+    if subscription:
+        if subscription.is_active:
+            flash('Tidak bisa menghapus subscription yang aktif', 'error')
+            return redirect(url_for('subscriptions'))
+        db.session.delete(subscription)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menghapus subscription'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+
+@app.route('/activate_subscription/<int:id>', methods=['GET'])
+@login_admin_required
+def activate_subscription(id):
+    subscription = Subscription.query.filter_by(id=id).first()
+    if subscription:
+        subscription.is_active = True
+        subscription.start_at = datetime.now()  # Mengatur waktu sekarang sebagai start_at
+        
+        # Memastikan duration adalah angka yang valid
+        duration_days = subscription.subscription_type.duration
+        if not isinstance(duration_days, int):
+            duration_days = 30
+        subscription.end_at = subscription.start_at + timedelta(days=duration_days)
+        subscription.duration = timedelta(days=duration_days)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan subscription'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+
+
+@app.route('/deactivate_subscription/<int:id>', methods=['GET'])
+@login_admin_required
+def deactivate_subscription(id):
+    subscription = Subscription.query.filter_by(id=id).first()
+    if subscription:
+        subscription.is_active = False
+        subscription.end_at = datetime.now()
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan subscription'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+
+@app.route('/users', methods=['GET', 'POST'])
+@login_admin_required
+def users():
+    form = UserForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            username = request.form['username']
+            email = request.form['email']
+            password = request.form['password']
+            password_confirm = request.form['password_confirm']
+            if username == '':
+                flash('Username tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if email == '':
+                flash('Email tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if password == '':
+                flash('Password tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if password_confirm == '':
+                flash('Konfirmasi password tidak boleh kosong', 'error')
+                return redirect(url_for('users'))
+            if password != password_confirm:
+                flash('Password dan konfirmasi password tidak sama', 'error')
+                return redirect(url_for('users'))
+            is_admin = request.form.get('is_admin') == 'y'
+            # search username or email in database
+            user = User.query.filter_by(username=username).first()
+            if user:
+                flash('Username sudah ada', 'error')
+                return jsonify({'status': 'error', 'message': 'Username sudah ada'}), 400
+            user = User.query.filter_by(email=email).first()
+            if user:
+                flash('Email sudah ada', 'error')
+                return jsonify({'status': 'error', 'message': 'Email sudah ada'}), 400
+            user = User(username=username, email=email, is_admin=is_admin)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            return jsonify({'status': 'success', 'message': 'Berhasil menambahkan user'}), 200
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Gagal menambahkan user {e}'}), 400
+    users = User.query.all()
+    return render_template('users.html', users=users, form=form)
+
+@app.route('/delete_user/<int:id>', methods=['GET'])
+@login_admin_required
+def delete_user(id):
+    user = User.query.get(id)
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menghapus user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+@app.route('/edit_user/<int:id>', methods=['GET', 'POST'])
+@login_admin_required
+def edit_user(id):
+    user = User.query.get(id)
+    form = UserForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        if username == '':
+            flash('Username tidak boleh kosong', 'error')
+            return redirect(url_for('edit_user', id=id))
+        if email == '':
+            flash('Email tidak boleh kosong', 'error')
+            return redirect(url_for('edit_user', id=id))
+        if password and password != '':
+            if password != confirm_password:
+                flash('Password dan konfirmasi password tidak sama', 'error')
+                return redirect(url_for('edit_user', id=id))
+        is_admin = request.form.get('is_admin') == 'y'
+        user.username = username
+        user.email = email
+        user.is_admin = is_admin
+        if password:
+            user.set_password(password)
+        db.session.commit()
+        return redirect(url_for('users'))
+    return render_template('edit_user.html', form=form, user_=user)
+
+@app.route('/activate_user/<int:id>', methods=['GET'])
+@login_admin_required
+def activate_user(id):
+    user = User.query.get(id)
+    if user:
+        user.is_active = True
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+@app.route('/deactivate_user/<int:id>', methods=['GET'])
+@login_admin_required
+def deactivate_user(id):
+    if id == get_session_user_id():
+        return jsonify({'status': 'error', 'message': 'Tidak bisa menonaktifkan user sendiri'}), 403
+    user = User.query.filter_by(id=id).first()
+    if user:
+        user.is_active = False
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+#  revoke_admin
+@app.route('/revoke_admin/<int:id>', methods=['GET'])
+@login_admin_required
+def revoke_admin(id):
+    if id == get_session_user_id():
+        return jsonify({'status': 'error', 'message': 'Tidak bisa mencabut hak admin sendiri'}), 403
+    user = User.query.filter_by(id=id).first()
+    if user:
+        user.is_admin = False
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mencabut hak admin user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+# grant_admin
+@app.route('/grant_admin/<int:id>', methods=['GET'])
+@login_admin_required
+def grant_admin(id):
+    user = User.query.filter_by(id=id).first()
+    if user:
+        user.is_admin = True
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil memberikan hak admin user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+
+# reset_password
+@app.route('/reset_password/<int:id>', methods=['GET'])
+@login_required
+def reset_password(id):
+    logged_in_user = User.query.filter_by(id=get_session_user_id()).first()
+    user = User.query.filter_by(id=id).first()
+    if user:
+        if user.id != get_session_user_id() and not logged_in_user.is_admin:
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+        user.set_password('password')
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil mereset password user'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        
+
+# settings
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    form = EditUserForm()
+    user = User.query.get(get_session_user_id())
+    if request.method == 'POST' and form.validate_on_submit():
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        password_confirm = request.form['password_confirm']
+        if username == '':
+            flash('Username tidak boleh kosong', 'error')
+            return redirect(url_for('settings'))
+        if email == '':
+            flash('Email tidak boleh kosong', 'error')
+            return redirect(url_for('settings'))
+        if password and password != '':
+            if password != password_confirm:
+                flash('Password dan konfirmasi password tidak sama', 'error')
+                return redirect(url_for('settings'))
+        user.username = username
+        user.email = email
+        if password:
+            user.set_password(password)
+        try:
+            db.session.commit()
+            flash('Berhasil mengupdate user', 'success')
+        except Exception as e:
+            flash(f'Gagal mengupdate user {e}', 'error')
+    return render_template('settings.html', form=form)

@@ -18,10 +18,20 @@
         <div class="mb-3">
             {{ form.username_email.label(class="form-label") }}
             {{ form.username_email(class="form-control", autofocus=True) }}
+
+            <!-- error -->
+            {% if form.username_email.errors %}
+                <small class="text-danger">{{ form.username_email.errors[0] }}</small>
+            {% endif %}
         </div>
         <div class="mb-3">
             {{ form.password.label(class="form-label") }}
             {{ form.password(class="form-control") }}
+
+            <!-- error -->
+            {% if form.password.errors %}
+                <small class="text-danger">{{ form.password.errors[0] }}</small>
+            {% endif %}
         </div>
         {{ form.submit(class="btn btn-success form-control") }}
     </form>

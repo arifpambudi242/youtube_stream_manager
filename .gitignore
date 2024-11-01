@@ -9,3 +9,4 @@ instance
 *.pyo
 *.pyd
 app/static/videos
+test*

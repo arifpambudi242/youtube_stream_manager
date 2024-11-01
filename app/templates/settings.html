@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1 class="mb-4">⚙️ Pengaturan Akun</h1>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Settings Form -->
+    <form action="{{ url_for('settings') }}" method="post">
+        {{ form.hidden_tag() }}
+        
+        <!-- Username Field -->
+        <div class="mb-3">
+            {{ form.username.label(class="form-label") }} <i class="bi bi-person"></i>
+            <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
+            <!-- on error -->
+            {% if form.username.errors %}
+                <small class="text-danger">{{ form.username.errors[0] }}</small>
+            {% endif %}
+        </div>
+        
+        <!-- Email Field -->
+        <div class="mb-3">
+            {{ form.email.label(class="form-label") }} <i class="bi bi-envelope"></i>
+            <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+            <!-- on error -->
+            {% if form.email.errors %}
+                <small class="text-danger">{{ form.email.errors[0] }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Password Field -->
+        <div class="mb-3">
+            {{ form.password.label(class="form-label") }} <i class="bi bi-lock"></i>
+            <input type="password" name="password" class="form-control">
+            <!-- on error -->
+            {% if form.password.errors %}
+                <small class="text-danger">{{ form.password.errors[0] }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Confirm Password Field -->
+        <div class="mb-3">
+            {{ form.password_confirm.label(class="form-label") }} <i class="bi bi-lock-fill"></i>
+            <input type="password" name="password_confirm" class="form-control" placeholder="Konfirmasi password baru">
+            <!-- on error -->
+            {% if form.password_confirm.errors %}
+                <small class="text-danger">{{ form.password_confirm.errors[0] }}</small>
+            {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <div class="mb-3">
+            <button type="submit" class="btn btn-success form-control">💾 Simpan Perubahan</button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        $('input[name="username"]').focus();
+    });
+    $('form').on('submit', function (e) {
+        e.preventDefault();
+        Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: "Anda akan menyimpan perubahan akun Anda!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, simpan!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $(this).unbind('submit').submit();
+            }
+        });
+    });
+</script>
+{% endblock %}

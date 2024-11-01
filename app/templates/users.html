@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- Form Users -->
+<h1>👥 Users</h1>
+<p>Manage registered users with ease</p>
+
+{% with messages = get_flashed_messages(with_categories=True) %}
+{% if messages %}
+{% for category, message in messages %}
+<div
+    class="alert alert-{% if category == 'error' %}danger{% else %}{{ category }}{% endif %}">{{
+    message }}</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<!-- List of Users -->
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mt-4">🧑 List of Users</h2>
+        <p>Here are the list of registered users</p>
+    </div>
+    <div>
+        <a id="add_user" class="btn btn-primary">➕ Add User</a>
+    </div>
+</div>
+<table class="table table-striped table-hover table-dark">
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user_ in users %}
+        <tr>
+            <td>{{ user_.username }}</td>
+            <td>{{ user_.email }}</td>
+            <td>{% if user_.is_admin %} Admin {% else %} User {% endif %}</td>
+            <td>
+                <a href="{{ url_for('edit_user', id=user_.id) }}"
+                    class="btn btn-warning btn-edit">✏️ Edit</a>
+                <a href="{{ url_for('delete_user', id=user_.id) }}"
+                    class="btn btn-danger btn-delete">🗑️ Delete</a>
+                <a href="{{ url_for('reset_password', id=user_.id) }}"
+                    class="btn btn-info btn-reset">🔑 Reset Password</a>
+                {% if user_.id != user.id %}
+                {% if user_.is_active %}
+                <a href="{{ url_for('deactivate_user', id=user_.id) }}"
+                    class="btn btn-danger  btn-deactivate">🔒 Deactivate</a>
+                {% else %}
+                <a href="{{ url_for('activate_user', id=user_.id) }}"
+                    class="btn btn-success btn-activate">🔓 Activate</a>
+                {% endif %}
+                {% endif %}
+                {% if user_.is_admin%}
+                <a href="{{ url_for('revoke_admin', id=user_.id) }}"
+                    class="btn btn-info btn-revoke">🔒 Revoke Admin</a>
+                <!-- else if -->
+                {% else %}
+                <a href="{{ url_for('grant_admin', id=user_.id) }}"
+                    class="btn btn-success btn-grant">🔓 Grant Admin</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<!-- modal -->
+<div class="modal" tabindex="-1" id="modal_user">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('users') }}" method="post" id="add-user">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }} <i class="bi bi-person"></i>
+                        {{ form.username(class="form-control", autofocus=True) }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }} <i class="bi bi-envelope"></i>
+                        {{ form.email(class="form-control") }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }} <i class="bi bi-lock"></i>
+                        {{ form.password(class="form-control") }}
+                    </div>
+                    <!-- password_confirm -->
+                    <div class="mb-3">
+                        {{ form.password_confirm.label(class="form-label") }} <i class="bi bi-lock"></i>
+                        {{ form.password_confirm(class="form-control") }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.is_admin(class="form-check-input") }}
+                        {{ form.is_admin.label(class="form-check-label") }}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.submit(class="btn btn-success form-control", value="Add User") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+        $(document).ready(function() {
+            $('.table').DataTable();
+            $('.btn-delete').click(function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'This user will be deleted permanently!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            method: 'GET',
+                            success: function() {
+                                Swal.fire({
+                                    title: 'Deleted!',
+                                    text: 'User has been deleted.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            $('.btn-deactivate').click(function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'This user will be deactivated!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, deactivate!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                       $.ajax({
+                            url: $(this).attr('href'),
+                            method: 'GET',
+                            success: function() {
+                                Swal.fire({
+                                    title: 'Deactivated!',
+                                    text: 'User has been deactivated.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            $('.btn-activate').click(function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'This user will be activated!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, activate!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            method: 'GET',
+                            success: function() {
+                                Swal.fire({
+                                    title: 'Activated!',
+                                    text: 'User has been activated.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            $('.btn-revoke').click(function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'This user will be revoked admin!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, revoke!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            method: 'GET',
+                            success: function() {
+                                Swal.fire({
+                                    title: 'Revoked!',
+                                    text: 'User has been revoked admin.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            $('.btn-grant').click(function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'This user will be granted admin!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, grant!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            method: 'GET',
+                            success: function() {
+                                Swal.fire({
+                                    title: 'Granted!',
+                                    text: 'User has been granted admin.',
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            $('.btn-reset').click(function(e){
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'This user password will be reset!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, reset!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: $(this).attr('href'),
+                            method: 'GET',
+                            success: function(data) {
+                                Swal.fire({
+                                    title: 'Reset!',
+                                    text: data.message,
+                                    icon: 'success'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            $('#add_user').click(function() {
+                $('#modal_user').modal('show');
+                //set focus
+                $('input[name="username"]').focus();
+            });
+            $('#add-user').submit(function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: $(this).attr('action'),
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    success: function(data) {
+                        Swal.fire({
+                            title: 'Added!',
+                            text: data.message,
+                            icon: 'success'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    },
+                    error: function(data) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: data.responseJSON.message,
+                            icon: 'error'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}
