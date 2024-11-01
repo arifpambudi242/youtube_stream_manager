@@ -864,21 +864,24 @@ def settings():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        confirm_password = request.form['confirm_password']
+        password_confirm = request.form['password_confirm']
         if username == '':
-            return jsonify({'status': 'error', 'message': 'Username tidak boleh kosong'}), 400
+            flash('Username tidak boleh kosong', 'error')
+            return redirect(url_for('settings'))
         if email == '':
-            return jsonify({'status': 'error', 'message': 'Email tidak boleh kosong'}), 400
+            flash('Email tidak boleh kosong', 'error')
+            return redirect(url_for('settings'))
         if password and password != '':
-            if password != confirm_password:
-                return jsonify({'status': 'error', 'message': 'Password dan konfirmasi password tidak sama'}), 400
+            if password != password_confirm:
+                flash('Password dan konfirmasi password tidak sama', 'error')
+                return redirect(url_for('settings'))
         user.username = username
         user.email = email
         if password:
             user.set_password(password)
         try:
             db.session.commit()
-            return jsonify({'status': 'success', 'message': 'Berhasil mengupdate user'}), 200
+            flash('Berhasil mengupdate user', 'success')
         except Exception as e:
-            return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
+            flash(f'Gagal mengupdate user {e}', 'error')
     return render_template('settings.html', form=form)
