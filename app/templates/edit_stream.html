@@ -18,7 +18,7 @@
             {{ form.judul(class="form-control", autofocus=True) }}
             <!-- set value -->
             <script>
-                document.querySelector('input[name="judul"]').value = "{{ stream.judul }}";
+                $('input[name="judul"]').val("{{ stream.judul }}");
             </script>
         </div>
         
@@ -27,7 +27,7 @@
             {{ form.deskripsi(class="form-control") }}
             <!-- set value -->
             <script>
-                document.querySelector('textarea[name="deskripsi"]').value = "{{ stream.deskripsi }}";
+                $('textarea[name="deskripsi"]').text("{{ stream.deskripsi }}");
             </script>
         </div>
         <div class="mb-3">
