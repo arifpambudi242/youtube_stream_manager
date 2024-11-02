@@ -79,6 +79,12 @@ class Streams(db.Model):
     
     def is_started(self):
         return self.pid is not None
+    @property
+    def end_at_str(self):
+        return self.end_at.strftime('%Y-%m-%d %H:%M')
+    @property
+    def start_at_str(self):
+        return self.start_at.strftime('%Y-%m-%d %H:%M')
 
 def seed():
     # Check if users table is empty

@@ -513,9 +513,6 @@ def edit_stream(id):
         if kode_stream == '':
             flash('Kode stream tidak boleh kosong', 'error')
             return redirect(url_for('edit_stream', id=id))
-        if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
-            flash('Anda tidak memiliki akses', 'error')
-            return redirect(url_for('edit_stream', id=id))
         if start_at == '':
             # langsung mulai tanpa delay
             start_at = None

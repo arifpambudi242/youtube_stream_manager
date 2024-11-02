@@ -47,18 +47,17 @@
         </div>        
         <div class="mb-3">
             {{ form.start_at.label(class="form-label") }} <i class="bi bi-clock"></i>
-            {{ form.start_at(class="form-control", value=stream.start_at if stream else '') }}
+            {{ form.start_at(class="form-control", value=stream.start_at_str ) }}
         </div>
         <div class="mb-3">
             {{ form.end_at.label(class="form-label") }} <i class="bi bi-clock"></i>
-            {{ form.end_at(class="form-control", value=stream.end_at if stream else '') }}
+            {{ form.end_at(class="form-control", value=stream.end_at_str ) }}
         </div>
         <div class="form-check mb-3">
             {{ form.is_repeat(class="form-check-input", checked="checked" if stream.is_repeat else None) }}
             {{ form.is_repeat.label(class="form-check-label") }}
         </div>
         
-
         {{ form.submit(class="btn btn-success form-control", value="Update Stream") }}
     </form>
 {% endblock %}
