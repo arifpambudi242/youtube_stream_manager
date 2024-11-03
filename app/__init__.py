@@ -5,13 +5,26 @@ eventlet.monkey_patch()
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from .config import Config
+from .config import Config, secret_path
 from .bot import *
 from flask_wtf.csrf import CSRFProtect
 import os
 from flask_socketio import SocketIO, emit
 from apscheduler.schedulers.background import BackgroundScheduler
+import requests
+import google.oauth2.credentials
+import google_auth_oauthlib.flow
+from google.auth.transport.requests import Request
+import googleapiclient.discovery
 
+
+
+CLIENT_SECRETS_FILE = secret_path
+
+SCOPES = ['https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/youtube.force-ssl']
+
+API_SERVICE_NAME = 'youtube'
+API_VERSION = 'v3'
 
 # Inisialisasi Flask
 app = Flask(__name__)

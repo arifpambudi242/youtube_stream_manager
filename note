@@ -6,6 +6,7 @@ import requests
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
+from flask_sqlalchemy import SQLAlchemy
 
 # This variable specifies the name of a file that contains the OAuth 2.0
 # information for this application, including its client_id and client_secret.
@@ -13,7 +14,7 @@ CLIENT_SECRETS_FILE = "secret/client.json"
 
 # This OAuth 2.0 access scope allows for full read/write access to the
 # authenticated user's account and requires requests to use an SSL connection.
-SCOPES = ['https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com/auth/youtube.force-ssl']
+SCOPES = ['https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/youtube.force-ssl']
 
 API_SERVICE_NAME = 'youtube'
 API_VERSION = 'v3'
@@ -21,40 +22,39 @@ API_VERSION = 'v3'
 app = flask.Flask(__name__)
 app.secret_key = 'REPLACE ME - this value is here as a placeholder.'
 
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///oauth_credentials.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Define the database model
+class OAuthCredentials(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(256))
+    refresh_token = db.Column(db.String(256))
+    token_uri = db.Column(db.String(256))
+    client_id = db.Column(db.String(256))
+    client_secret = db.Column(db.String(256))
+    scopes = db.Column(db.String(256))
+
+# Initialize the database
+with app.app_context():
+    db.create_all()
+
 @app.route('/')
 def index():
     return print_index_table()
 
 @app.route('/create_live_stream', methods=['GET', 'POST'])
 def create_live_stream():
-    if 'credentials' not in flask.session:
+    credentials = load_credentials_from_db()
+    if not credentials:
         return flask.redirect('authorize')
 
+    youtube = googleapiclient.discovery.build(
+        API_SERVICE_NAME, API_VERSION, credentials=credentials)
+
     if flask.request.method == 'POST':
-        # Load credentials from the session.
-        credentials = google.oauth2.credentials.Credentials(
-            **flask.session['credentials'])
-
-        youtube = googleapiclient.discovery.build(
-            API_SERVICE_NAME, API_VERSION, credentials=credentials)
-
-        # Prepare request for creating a live stream
-        '''
-        You must specify a value for these properties:
-
-        snippet.title
-        cdn.frameRate
-        cdn.ingestionType
-        cdn.resolution
-        You can set values for these properties:
-
-        snippet.title
-        snippet.description
-        cdn.frameRate
-        cdn.ingestionType
-        cdn.resolution
-        contentDetails.isReusable
-        '''
         live_stream = {
             'snippet': {
                 'title': flask.request.form['title'],
@@ -70,15 +70,11 @@ def create_live_stream():
             }
         }
 
-        # Create the live stream
         request = youtube.liveStreams().insert(
             part="snippet,cdn, status",
             body=live_stream
         )
         response = request.execute()
-
-        # Save credentials back to session
-        flask.session['credentials'] = credentials_to_dict(credentials)
 
         return flask.jsonify(response)
 
@@ -94,26 +90,223 @@ def create_live_stream():
         </form>
     '''
 
-@app.route('/test_api_request')
-def test_api_request():
-    if 'credentials' not in flask.session:
+@app.route('/update_live_stream', methods=['GET','POST'])
+def update_live_stream():
+    credentials = load_credentials_from_db()
+    if not credentials:
         return flask.redirect('authorize')
-
-    credentials = google.oauth2.credentials.Credentials(
-        **flask.session['credentials'])
 
     youtube = googleapiclient.discovery.build(
         API_SERVICE_NAME, API_VERSION, credentials=credentials)
 
-    # Get the list of live broadcasts
-    request = youtube.liveBroadcasts().list(
+    if flask.request.method == 'POST':
+        live_stream = {
+            'id': flask.request.form['id'],
+            'snippet': {
+                'title': flask.request.form['title'],
+                'description': flask.request.form['description']
+            },
+            'cdn': {
+                'frameRate': '30fps',
+                'ingestionType': 'rtmp',
+                'resolution': '1080p'
+            },
+            'status': {
+                'privacyStatus': 'public'
+            }
+        }
+
+        request = youtube.liveStreams().update(
+            part="snippet,cdn, status",
+            body=live_stream
+        )
+        response = request.execute()
+
+        return flask.jsonify(response)
+
+    return '''
+        <form method="POST">
+            <label for="id">Stream ID:</label><br>
+            <input type="text" id="id" name="id" required><br>
+            <label for="title">Stream Title:</label><br>
+            <input type="text" id="title" name="title" required><br>
+            <label for="description">Stream Description:</label><br>
+            <textarea id="description" name="description" required></textarea><br>
+            <input type="submit" value="Update Live Stream">
+        </form>
+    '''
+
+@app.route('/list_live_streams', methods=['GET'])
+def list_live_streams():
+    credentials = load_credentials_from_db()
+    if not credentials:
+        return flask.redirect('authorize')
+
+    youtube = googleapiclient.discovery.build(
+        API_SERVICE_NAME, API_VERSION, credentials=credentials)
+
+    request = youtube.liveStreams().list(
         part="snippet,status",
         mine=True
     )
     response = request.execute()
 
-    # Save credentials back to session
-    flask.session['credentials'] = credentials_to_dict(credentials)
+    return flask.jsonify(**response)
+
+@app.route('/list_broadcasts', methods=['GET'])
+def list_broadcasts():
+    credentials = load_credentials_from_db()
+    if not credentials:
+        return flask.redirect('authorize')
+
+    youtube = googleapiclient.discovery.build(
+        API_SERVICE_NAME, API_VERSION, credentials=credentials)
+
+    request = youtube.liveBroadcasts().list(
+        part="snippet,contentDetails,status",
+        broadcastType="all",
+        mine=True
+    )
+
+    response = request.execute()
+
+    return flask.jsonify(**response)
+
+# update broadcast
+@app.route('/update_broadcast', methods=['GET','POST'])
+def update_broadcast():
+    credentials = load_credentials_from_db()
+    if not credentials:
+        return flask.redirect('authorize')
+
+    youtube = googleapiclient.discovery.build(
+        API_SERVICE_NAME, API_VERSION, credentials=credentials)
+
+    if flask.request.method == 'POST':
+        broadcast = {
+            'id': flask.request.form['id'],
+            'snippet': {
+                'title': flask.request.form['title'],
+                'description': flask.request.form['description']
+            },
+            'status': {
+                'privacyStatus': 'public'
+            }
+        }
+
+        request = youtube.liveBroadcasts().update(
+            part="snippet, status",
+            body=broadcast
+        )
+        response = request.execute()
+
+        return flask.jsonify(response)
+
+    return '''
+        <form method="POST">
+            <label for="id">Broadcast ID:</label><br>
+            <input type="text" id="id" name="id" required><br>
+            <label for="title">Broadcast Title:</label><br>
+            <input type="text" id="title" name="title" required><br>
+            <label for="description">Broadcast Description:</label><br>
+            <textarea id="description" name="description" required></textarea><br>
+            <input type="submit" value="Update Broadcast">
+        </form>
+    '''
+
+@app.route('/bind_stream_to_broadcast', methods=['GET', 'POST'])
+def bind_stream_to_broadcast():
+    credentials = load_credentials_from_db()
+    if not credentials:
+        return flask.redirect('authorize')
+
+    youtube = googleapiclient.discovery.build(
+        API_SERVICE_NAME, API_VERSION, credentials=credentials)
+
+    if flask.request.method == 'POST':
+        # Menggunakan input yang sama untuk broadcast dan live stream
+        title = flask.request.form['title']
+        description = flask.request.form['description']
+
+        # Membuat broadcast
+        broadcast_body = {
+            'snippet': {
+                'title': title,
+                'description': description,
+                'scheduledStartTime': flask.request.form['scheduled_start_time']
+            },
+            'status': {
+                'privacyStatus': 'private'
+            }
+        }
+
+        broadcast_request = youtube.liveBroadcasts().insert(
+            part="snippet,status",
+            body=broadcast_body
+        )
+        broadcast_response = broadcast_request.execute()
+        broadcast_id = broadcast_response['id']  # Mendapatkan ID siaran
+
+        # Membuat livestream
+        live_stream_body = {
+            'snippet': {
+                'title': title,
+                'description': description
+            },
+            'cdn': {
+                'frameRate': '30fps',
+                'ingestionType': 'rtmp',
+                'resolution': '1080p'
+            },
+            'status': {
+                'privacyStatus': 'private'
+            }
+        }
+
+        stream_request = youtube.liveStreams().insert(
+            part="snippet,cdn,status",
+            body=live_stream_body
+        )
+        stream_response = stream_request.execute()
+        stream_id = stream_response['id']  # Mendapatkan ID stream
+
+        # Bind livestream ke broadcast
+        bind_request = youtube.liveBroadcasts().bind(
+            part="id,contentDetails",
+            id=broadcast_id,
+            streamId=stream_id
+        )
+        bind_response = bind_request.execute()
+
+        return flask.jsonify(bind_response)
+
+    # Formulir yang disederhanakan
+    return '''
+        <form method="POST">
+            <label for="title">Title:</label><br>
+            <input type="text" id="title" name="title" required><br>
+            <label for="description">Description:</label><br>
+            <textarea id="description" name="description" required></textarea><br>
+            <label for="scheduled_start_time">Scheduled Start Time:</label><br>
+            <input type="datetime-local" id="scheduled_start_time" name="scheduled_start_time" required><br><br>
+            <input type="submit" value="Bind Stream to Broadcast">
+        </form>
+    '''
+
+@app.route('/test_api_request')
+def test_api_request():
+    credentials = load_credentials_from_db()
+    if not credentials:
+        return flask.redirect('authorize')
+
+    youtube = googleapiclient.discovery.build(
+        API_SERVICE_NAME, API_VERSION, credentials=credentials)
+
+    request = youtube.liveBroadcasts().list(
+        part="snippet,status",
+        mine=True
+    )
+    response = request.execute()
 
     return flask.jsonify(**response)
 
@@ -144,43 +337,61 @@ def oauth2callback():
     flow.fetch_token(authorization_response=authorization_response)
 
     credentials = flow.credentials
-    flask.session['credentials'] = credentials_to_dict(credentials)
+    save_credentials_to_db(credentials)
 
     return flask.redirect(flask.url_for('create_live_stream'))
 
 @app.route('/revoke')
 def revoke():
-    if 'credentials' not in flask.session:
+    credentials = load_credentials_from_db()
+    if not credentials:
         return ('You need to <a href="/authorize">authorize</a> before ' +
                 'testing the code to revoke credentials.')
 
-    credentials = google.oauth2.credentials.Credentials(
-        **flask.session['credentials'])
-
     revoke = requests.post('https://oauth2.googleapis.com/revoke',
-                            params={'token': credentials.token},
-                            headers={'content-type': 'application/x-www-form-urlencoded'})
+                           params={'token': credentials.token},
+                           headers={'content-type': 'application/x-www-form-urlencoded'})
 
-    status_code = getattr(revoke, 'status_code')
-    if status_code == 200:
-        return ('Credentials successfully revoked.' + print_index_table())
+    if revoke.status_code == 200:
+        clear_credentials_from_db()
+        return 'Credentials successfully revoked.<br><br>' + print_index_table()
     else:
-        return ('An error occurred.' + print_index_table())
+        return 'An error occurred while revoking credentials.<br><br>' + print_index_table()
 
 @app.route('/clear')
 def clear_credentials():
-    if 'credentials' in flask.session:
-        del flask.session['credentials']
-    return ('Credentials have been cleared.<br><br>' +
-            print_index_table())
+    clear_credentials_from_db()
+    return 'Credentials have been cleared.<br><br>' + print_index_table()
 
-def credentials_to_dict(credentials):
-    return {'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes}
+def save_credentials_to_db(credentials):
+    # Delete any existing credentials and save new ones
+    clear_credentials_from_db()
+    db.session.add(OAuthCredentials(
+        token=credentials.token,
+        refresh_token=credentials.refresh_token,
+        token_uri=credentials.token_uri,
+        client_id=credentials.client_id,
+        client_secret=credentials.client_secret,
+        scopes=",".join(credentials.scopes)
+    ))
+    db.session.commit()
+
+def load_credentials_from_db():
+    creds = OAuthCredentials.query.first()
+    if creds:
+        return google.oauth2.credentials.Credentials(
+            token=creds.token,
+            refresh_token=creds.refresh_token,
+            token_uri=creds.token_uri,
+            client_id=creds.client_id,
+            client_secret=creds.client_secret,
+            scopes=creds.scopes.split(',')
+        )
+    return None
+
+def clear_credentials_from_db():
+    OAuthCredentials.query.delete()
+    db.session.commit()
 
 def print_index_table():
     return ('<table>' +
@@ -188,6 +399,7 @@ def print_index_table():
             '<td>Submit a live stream request.</td></tr>' +
             '<tr><td><a href="/test_api_request">Test an API request</a></td>' +
             '<td>Submit an API request to list live broadcasts.</td></tr>' +
+            '<tr><td><a href="/list_live_streams">List Live Streams</a></td>' +
             '<tr><td><a href="/authorize">Test the auth flow directly</a></td>' +
             '<td>Go directly to the authorization flow.</td></tr>' +
             '<tr><td><a href="/revoke">Revoke current credentials</a></td>' +
