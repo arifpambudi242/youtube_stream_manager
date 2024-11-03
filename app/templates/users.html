@@ -42,19 +42,17 @@
             <td>
                 <a href="{{ url_for('edit_user', id=user_.id) }}"
                     class="btn btn-warning btn-edit">✏️ Edit</a>
+                    {% if user_.id != user.id %}
                 <a href="{{ url_for('delete_user', id=user_.id) }}"
                     class="btn btn-danger btn-delete">🗑️ Delete</a>
                 <a href="{{ url_for('reset_password', id=user_.id) }}"
                     class="btn btn-info btn-reset">🔑 Reset Password</a>
-                {% if user_.id != user.id %}
                 {% if user_.is_active %}
                 <a href="{{ url_for('deactivate_user', id=user_.id) }}"
                     class="btn btn-danger  btn-deactivate">🔒 Deactivate</a>
                 {% else %}
                 <a href="{{ url_for('activate_user', id=user_.id) }}"
                     class="btn btn-success btn-activate">🔓 Activate</a>
-                {% endif %}
-                {% endif %}
                 {% if user_.is_admin%}
                 <a href="{{ url_for('revoke_admin', id=user_.id) }}"
                     class="btn btn-info btn-revoke">🔒 Revoke Admin</a>
@@ -62,6 +60,8 @@
                 {% else %}
                 <a href="{{ url_for('grant_admin', id=user_.id) }}"
                     class="btn btn-success btn-grant">🔓 Grant Admin</a>
+                {% endif %}
+                {% endif %}
                 {% endif %}
             </td>
         </tr>
