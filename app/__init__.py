@@ -16,7 +16,8 @@ import google.oauth2.credentials
 import google_auth_oauthlib.flow
 from google.auth.transport.requests import Request
 import googleapiclient.discovery
-
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 
 CLIENT_SECRETS_FILE = secret_path
@@ -29,6 +30,10 @@ API_VERSION = 'v3'
 # Inisialisasi Flask
 app = Flask(__name__)
 app.config.from_object(Config)
+limiter = Limiter(key_func=get_remote_address)
+
+# Menghubungkan limiter dengan app
+limiter.init_app(app)
 
 # Inisialisasi SQLAlchemy dan Migrate
 db = SQLAlchemy(app)

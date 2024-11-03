@@ -14,9 +14,16 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+        {% is_indonesia %}
         <h2>{% if user.username %}Hallo {{ user.username }},{% endif %} Selamat Datang di Youtube Live Manager</h2>
         <p>Terima kasih telah menggunakan aplikasi Youtube Live Manager. Aplikasi ini dirancang untuk membantu Anda dalam mengelola live streaming Youtube Anda.</p>
         <p>Anda dapat memulai dengan menambahkan live streaming Youtube Anda. Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.</p>
         <p>Terima kasih.</p>
+        {% else %}
+        <h2>{% if user.username %}Hello {{ user.username }},{% endif %} Welcome to Youtube Live Manager</h2>
+        <p>Thank you for using Youtube Live Manager application. This application is designed to help you manage your Youtube live streaming.</p>
+        <p>You can start by adding your Youtube live streaming. If you have any questions, feel free to contact us.</p>
+        <p>Thank you.</p>
+        {% endif %}
     </div>
 {% endblock %}

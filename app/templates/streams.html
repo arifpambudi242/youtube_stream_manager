@@ -238,6 +238,9 @@
                 success: function (data) {
                     $('input[name="judul"]').val(data.video.judul);
                     $('textarea[name="deskripsi"]').text(data.video.deskripsi);
+                },
+                error: function (err) {
+                    Swal.fire("Error", "Failed to get video data", "error");
                 }
             });
         });

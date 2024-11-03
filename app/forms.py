@@ -45,10 +45,10 @@ class Streams(db.Model):
         return f'<Streams {self.judul}>'
 '''
 class StreamForm(FlaskForm):
-    judul = StringField('Judul', validators=[DataRequired(), Length(min=4, max=150)])
-    deskripsi = TextAreaField('Deskripsi', default='-', validators=[DataRequired(), Length(min=1, max=1000)])
+    judul = StringField('Title', validators=[DataRequired(), Length(min=4, max=150)])
+    deskripsi = TextAreaField('Description', default='-', validators=[DataRequired(), Length(min=1, max=500)])
     video_id = SelectField('Video', coerce=int, validators=[DataRequired()])
-    kode_stream = StringField('Kode Stream')
+    kode_stream = StringField('Stream Key')
     start_at = DateTimeField('Start At', format='%Y-%m-%dT%H:%M', render_kw={"type": "datetime-local"})
     end_at = DateTimeField('End At', format='%Y-%m-%dT%H:%M', render_kw={"type": "datetime-local"})
     is_repeat = BooleanField('Repeat?')

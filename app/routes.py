@@ -3,8 +3,9 @@ import signal
 import subprocess
 import threading
 import time
+import re
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
-from functools import wraps
+from functools import wraps, lru_cache
 from app import *
 from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
@@ -16,7 +17,6 @@ key = None
 
 background_thread = None
 thread_running = False
-
 def encrypt_session_value(value):
     global key
     # make key url-safe
@@ -78,7 +78,7 @@ def subscription_required(f):
                 return redirect(url_for('login'))
             sub = Subscription.query.filter_by(user_id=user_id, is_active=True).first()
             if not sub and not User.query.get(user_id).is_admin:
-                flash('Anda belum berlangganan', 'error')
+                flash('Anda belum berlangganan', 'error') if is_indonesian_ip() else flash('You are not subscribed', 'error')
                 return redirect(url_for('index'))
             return f(*args, **kwargs)
     return decorated_function
@@ -86,7 +86,7 @@ def subscription_required(f):
 def disabled_function(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        flash('Fitur ini sedang dinonaktifkan', 'error')
+        flash('Fitur ini sedang dinonaktifkan', 'error') if is_indonesian_ip() else flash('This feature is disabled', 'error')
         # Redirect to referrer if available, else to index
         return redirect(request.referrer or url_for('index'))
     return decorated_function
@@ -108,15 +108,53 @@ def inject_data():
             user_id = get_session_user_id()
             if user_id:
                 user = User.query.get(user_id)
+                is_indonesia = is_indonesian_ip()
+                # get user ip
+                ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                ip = ip.split(',')[0] if ',' in ip else ip
             else:
                 user = BlankUser()
         except:
             pass
-    return dict(user=user, is_admin=user.is_admin if user else False)
+    return dict(user=user, is_admin=user.is_admin if user else False, is_indonesia=is_indonesia)
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+def is_indonesian_ip():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip = ip.split(',')[0] if ',' in ip else ip
+    
+    try:
+        ip_info = get_ip_info(ip)
+        if ip_info:
+            return ip_info['country_code'] == 'ID'
+    except:
+        return False
+
+# Validate IP
+def is_valid_ip(ip):
+    ipv4_pattern = r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
+    ipv6_pattern = r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$"
+    return re.match(ipv4_pattern, ip) or re.match(ipv6_pattern, ip)
+
+# Cache the IP info function to minimize external requests
+@lru_cache(maxsize=1000)
+def get_ip_info(ip):
+    response = requests.get(f"https://ipapi.co/{ip}/json/")
+    return response.json() if response.status_code == 200 else None
+
+@app.route("/get_ip_info")
+@limiter.limit("100 per minute")
+def ip_info():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip = ip.split(',')[0] if ',' in ip else ip
+    if not is_valid_ip(ip):
+        return jsonify({"error": "Invalid IP address"}), 400
+    response = requests.get(f"https://ipapi.co/{ip}/json/")
+    return jsonify(response.json()) if response.status_code == 200 else jsonify({"error": "Unable to fetch IP details"}), 500
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -131,16 +169,16 @@ def register():
             confirm_password = request.form['confirm_password']
             user = {'username': username, 'email': email}
             if username == '':
-                flash('Username tidak boleh kosong', 'error')
+                flash('Username tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Username must not be empty', 'error')
                 return redirect(url_for('register'))
             
 
             if password == '':
-                flash('Password tidak boleh kosong', 'error')
+                flash('Password tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Password must not be empty', 'error')
                 return redirect(url_for('register'))
             
             if confirm_password == '':
-                flash('Konfirmasi password tidak boleh kosong', 'error')
+                flash('Konfirmasi password tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Confirm password must not be empty', 'error')
                 return redirect(url_for('register'))
 
             
@@ -152,7 +190,7 @@ def register():
                 flash('Email sudah ada', 'error')
             
             if password != confirm_password:
-                flash('Password dan konfirmasi password tidak sama', 'error')
+                flash('Password dan konfirmasi password tidak sama', 'error') if is_indonesian_ip() else flash('Password and confirm password must be the same', 'error')
                 return redirect(url_for('register'))
             
             # if flash message is not empty, redirect to register page
@@ -179,7 +217,7 @@ def register():
             return redirect(url_for('index'))
         except Exception as e:
             
-            flash(f'Terjadi kesalahan {e}', 'error')
+            flash(f'Terjadi kesalahan {e}', 'error') if is_indonesian_ip() else flash(f'An error occurred {e}', 'error')
             return redirect(url_for('register'))
     return render_template('register.html', is_admin_exists=is_admin_exists, users=user, form=form)
 
@@ -204,16 +242,16 @@ def login():
         
         if user:
             if not user.is_active:
-                flash('User Belum aktif', 'error')
+                flash('User Belum aktif', 'error') if is_indonesian_ip() else flash('User is not active', 'error')
                 return redirect(url_for('login'))
         else:
-            flash('Username atau email tidak ditemukan', 'error')
+            flash('Username atau email tidak ditemukan', 'error') if is_indonesian_ip() else flash('Username or email not found', 'error')
             return redirect(url_for('login'))
         
         password = request.form['password']
         
         if password == '':
-            flash('Password tidak boleh kosong', 'error')
+            flash('Password tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Password must not be empty', 'error')
             return redirect(url_for('login'))
         
         # Cek apakah user ada dan password benar
@@ -230,12 +268,12 @@ def login():
                 if login_attempts[user.username]['attempts'] >= 3 and elapsed_time < timedelta(seconds=wait_time):
                     latest_attempt = login_attempts[user.username]['time']
                     wait_until = latest_attempt + timedelta(seconds=wait_time)
-                    flash(f'Terlalu banyak percobaan login. Silakan coba lagi pada {wait_until} WIB', 'error')
+                    flash(f'Terlalu banyak percobaan login. Silakan coba lagi nanti', 'error') if is_indonesian_ip() else flash(f'Too many login attempts. Please try again later', 'error')
                     return redirect(url_for('login'))
                 attemp_left = 3 - login_attempts[user.username]['attempts']
-                flash(f'Username atau password salah. {attemp_left} percobaan lagi', 'error')
+                flash(f'Username atau password salah. {attemp_left} percobaan lagi', 'error') if is_indonesian_ip() else flash(f'Username or password is wrong. {attemp_left} more attempts', 'error')
             else:
-                flash(f'Username atau password salah', 'error')
+                flash(f'Username atau password salah', 'error') if is_indonesian_ip() else flash(f'Username or password is wrong', 'error')
             
             return redirect(url_for('login'))
         else:
@@ -246,7 +284,7 @@ def login():
                 else:
                     latest_attempt = login_attempts[user.username]['time']
                     wait_until = latest_attempt + timedelta(seconds=wait_time)
-                    flash(f'Terlalu banyak percobaan login. Silakan coba lagi pada {wait_until} WIB', 'error')
+                    flash(f'Terlalu banyak percobaan login. Silakan coba lagi nanti', 'error') if is_indonesian_ip() else flash(f'Too many login attempts. Please try again later', 'error')
                     return redirect(url_for('login'))
             # Jika user dan password benar
             # Simpan user ke session
@@ -272,7 +310,7 @@ def authorize():
     oauth = Oauth2Credentials.query.filter_by(user_id=user_id).first()
     if user:
         if oauth:
-            flash('User sudah diotorisasi', 'error')
+            flash('User sudah diotorisasi', 'error') if is_indonesian_ip() else flash('User already authorized', 'error')
             # redirect to referrer if available, else to index
             return redirect(request.referrer or url_for('index'))
         
@@ -287,7 +325,7 @@ def authorize():
 
         return redirect(authorization_url)
     else:
-        flash('User tidak ditemukan', 'error')
+        flash('User tidak ditemukan', 'error') if is_indonesian_ip() else flash('User not found', 'error')
         return redirect(url_for('index'))
 
 @app.route('/oauth2callback', methods=['GET'])
@@ -313,9 +351,9 @@ def oauth2callback():
     db.session.add(credentials)
     try:
         db.session.commit()
-        flash('Berhasil mengotorisasi', 'success')
+        flash('Berhasil mengotorisasi', 'success') if is_indonesian_ip() else flash('Successfully authorized', 'success')
     except Exception as e:
-        flash(f'Gagal mengotorisasi {e}', 'error')
+        flash(f'Gagal mengotorisasi {e}', 'error') if is_indonesian_ip() else flash(f'Failed to authorize {e}', 'error')
     
     # ubah is_use_api menjadi True
     user = User.query.filter_by(id=get_session_user_id()).first()
@@ -338,12 +376,12 @@ def revoke():
         user = User.query.filter_by(id=user_id).first()
         user.is_use_api = False
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil me-revoke akses'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil me-revoke akses'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully revoke access'}), 200
     else:
         user = User.query.filter_by(id=user_id).first()
         user.is_use_api = False
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'User sudah direvoke'}), 200
+        return jsonify({'status': 'success', 'message': 'User sudah direvoke'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'User already revoked'}), 200
     
 
 
@@ -352,6 +390,7 @@ def revoke():
 def logout():
     # Hapus user dari session
     session.clear()
+    flash('Berhasil logout', 'success') if is_indonesian_ip() else flash('Successfully logout', 'success')
     return redirect(url_for('index'))
 
 
@@ -372,16 +411,16 @@ def videos():
         file = request.files['file']
         allowed_extensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'wmv']
         if judul == '':
-            flash('Judul tidak boleh kosong', 'error')
+            flash('Judul tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Title must not be empty', 'error')
             return redirect(url_for('videos'))
         if deskripsi == '':
-            flash('Deskripsi tidak boleh kosong', 'error')
+            flash('Deskripsi tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Description must not be empty', 'error')
             return redirect(url_for('videos'))
         if file.filename == '':
-            flash('File tidak boleh kosong', 'error')
+            flash('File tidak boleh kosong', 'error') if is_indonesian_ip() else flash('File must not be empty', 'error')
             return redirect(url_for('videos'))
         if file.filename.split('.')[-1] not in allowed_extensions:
-            flash('File harus berupa video', 'error')
+            flash('File harus berupa video', 'error') if is_indonesian_ip() else flash('File must be a video', 'error')
             return redirect(url_for('videos'))
         # save file to static folder
         ext = file.filename.split('.')[-1]
@@ -392,7 +431,7 @@ def videos():
         video = Videos(judul=judul, deskripsi=deskripsi, path=path, user_id=get_session_user_id())
         db.session.add(video)
         db.session.commit()
-        flash('Video berhasil diupload', 'success')
+        flash('Video berhasil diupload', 'success') if is_indonesian_ip() else flash('Video successfully uploaded', 'success')
         return redirect(url_for('videos'))
     return render_template('videos.html', form=form, videos=videos)
 
@@ -407,15 +446,15 @@ def delete_video(id):
             db.session.delete(video)
             db.session.commit()
         except:
-            flash('Gagal menghapus video kemungkinan karena video sedang digunakan', 'error')
+            flash('Gagal menghapus video kemungkinan karena video sedang digunakan', 'error') if is_indonesian_ip() else flash('Failed to delete video possibly because the video is being used', 'error')
             return redirect(url_for('videos'))
         # delete file from static folder
         path = f'app/static/{video.path}'
         if os.path.exists(path):
             os.remove(path)
-        flash('Video berhasil dihapus', 'success')
+        flash('Video berhasil dihapus', 'success') if is_indonesian_ip() else flash('Video successfully deleted', 'success')
     else:
-        flash('Anda tidak memiliki akses', 'error')
+        flash('Anda tidak memiliki akses', 'error') if is_indonesian_ip() else flash('You do not have access', 'error')
     return redirect(url_for('videos'))
 
 # edit video
@@ -427,7 +466,7 @@ def edit_video(id):
     video = Videos.query.get(id)
     user = User.query.get(get_session_user_id())
     if video.user_id != int(get_session_user_id()) and not user.is_admin:
-        flash('Anda tidak memiliki akses', 'error')
+        flash('Anda tidak memiliki akses', 'error') if is_indonesian_ip() else flash('You do not have access', 'error')
         return redirect(url_for('videos'))
     form = VideoForm()
     if request.method == 'POST':
@@ -435,10 +474,10 @@ def edit_video(id):
         deskripsi = request.form['deskripsi']
         file = request.files['file']
         if judul == '':
-            flash('Judul tidak boleh kosong', 'error')
+            flash('Judul tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Title must not be empty', 'error')
             return redirect(url_for('edit_video', id=id))
         if deskripsi == '':
-            flash('Deskripsi tidak boleh kosong', 'error')
+            flash('Deskripsi tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Description must not be empty', 'error')
             return redirect(url_for('edit_video', id=id))
         if file.filename != '':
             old_path = video.path
@@ -456,7 +495,7 @@ def edit_video(id):
         video.judul = judul
         video.deskripsi = deskripsi
         db.session.commit()
-        flash('Video berhasil diupdate', 'success')
+        flash('Video berhasil diupdate', 'success') if is_indonesian_ip() else flash('Video successfully updated', 'success')
         return redirect(url_for('edit_video', id=id))
     return render_template('edit_video.html', form=form, video=video)
 
@@ -489,20 +528,20 @@ def streams():
         video_id = request.form['video_id']
         is_repeat = request.form.get('is_repeat') == 'y'
         if judul == '':
-            flash('Judul tidak boleh kosong', 'error')
+            flash('Judul tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Title must not be empty', 'error')
             return redirect(url_for('streams'))
         if deskripsi == '':
-            flash('Deskripsi tidak boleh kosong', 'error')
+            flash('Deskripsi tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Description must not be empty', 'error')
             return redirect(url_for('streams'))
         if kode_stream == '':
             if not is_autorisasi:
-                flash('Kode stream tidak boleh kosong', 'error')
+                flash('Kode stream tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Stream code must not be empty', 'error')
                 return redirect(url_for('streams'))
             else:
                 kode_stream = bind_broadcast_and_livestream(judul, deskripsi, start_at)
 
         if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
-            flash('Anda tidak memiliki akses', 'error')
+            flash('Anda tidak memiliki akses', 'error') if is_indonesian_ip() else flash('You do not have access', 'error')
             return redirect(url_for('streams'))
         if start_at == '':
             # langsung mulai tanpa delay
@@ -519,7 +558,7 @@ def streams():
         db.session.add(stream)
         db.session.commit()
         
-        flash('Stream berhasil dibuat', 'success')
+        flash('Stream berhasil dibuat', 'success') if is_indonesian_ip() else flash('Stream successfully created', 'success')
         return redirect(url_for('streams'))
     return render_template('streams.html', form=form, streams=streams, videos=videos, is_autorisasi=is_autorisasi)
 
@@ -606,13 +645,13 @@ def start_stream(id):
                 stream.start_at = datetime.now()
                 stream.is_active = True
                 db.session.commit()
-                return jsonify({'status': 'success', 'message': 'Stream berhasil dimulai'}), 200
+                return jsonify({'status': 'success', 'message': 'Stream berhasil dimulai'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Stream successfully started'}), 200
             else:
-                return jsonify({'status': 'error', 'message': 'Video tidak ditemukan'}), 404
+                return jsonify({'status': 'error', 'message': 'Video tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Video not found'}), 404
         else:
-            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'You do not have access'}), 403
     else:
-        return jsonify({'status': 'error', 'message': 'Stream tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'Stream tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Stream not found'}), 404
                         
 
 @app.route('/delete_stream/<int:id>', methods=['GET'])
@@ -625,9 +664,9 @@ def delete_stream(id):
             stop_stream_by_pid(stream.pid)
         db.session.delete(stream)
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Stream berhasil dihapus'}), 200
+        return jsonify({'status': 'success', 'message': 'Stream berhasil dihapus'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Stream successfully deleted'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+        return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'You do not have access'}), 403
     
 
 
@@ -641,10 +680,10 @@ def edit_stream(id):
     user = User.query.get(get_session_user_id())
     if not user.is_admin:
         if stream.user_id != user.id:
-            flash('Anda tidak memiliki akses', 'error')
+            flash('Anda tidak memiliki akses', 'error') if is_indonesian_ip() else flash('You do not have access', 'error')
             return redirect(url_for('streams'))
     if stream.is_active:
-        flash('Stream sedang berjalan', 'error')
+        flash('Stream sedang berjalan', 'error') if is_indonesian_ip() else flash('Stream is running', 'error')
         return redirect(url_for('streams'))
     form = StreamForm()
     if user.is_admin:
@@ -660,13 +699,13 @@ def edit_stream(id):
         video_id = request.form['video_id']
         is_repeat = request.form.get('is_repeat') == 'y'
         if judul == '':
-            flash('Judul tidak boleh kosong', 'error')
+            flash('Judul tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Judul tidak boleh kosong', 'error')
             return redirect(url_for('edit_stream', id=id))
         if deskripsi == '':
-            flash('Deskripsi tidak boleh kosong', 'error')
+            flash('Deskripsi tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Deskripsi tidak boleh kosong', 'error')
             return redirect(url_for('edit_stream', id=id))
         if kode_stream == '':
-            flash('Kode stream tidak boleh kosong', 'error')
+            flash('Kode stream tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Kode stream tidak boleh kosong', 'error')
             return redirect(url_for('edit_stream', id=id))
         if start_at == '':
             # langsung mulai tanpa delay
@@ -686,7 +725,7 @@ def edit_stream(id):
         stream.is_repeat = is_repeat
         stream.video_id = video_id
         db.session.commit()
-        flash('Stream berhasil diupdate', 'success')
+        flash('Stream berhasil diupdate', 'success') if is_indonesian_ip() else flash('Stream successfully updated', 'success')
         return redirect(url_for('edit_stream', id=id))
     return render_template('edit_stream.html', form=form, stream=stream, videos=videos)
 
@@ -704,13 +743,13 @@ def stop_stream(id):
                 stream.pid = None
                 stream.is_active = False
                 db.session.commit()
-                return jsonify({'status': 'success', 'message': 'Stream berhasil dihentikan'}), 200
+                return jsonify({'status': 'success', 'message': 'Stream berhasil dihentikan'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Stream successfully stopped'}), 200
             else:
-                return jsonify({'status': 'error', 'message': 'Stream tidak sedang berjalan'}), 400
+                return jsonify({'status': 'error', 'message': 'Stream tidak sedang berjalan'}), 400 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Stream is not running'}), 400
         else:
-            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'You do not have access'}), 403
     else:
-        return jsonify({'status': 'error', 'message': 'Stream tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'Stream tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Stream not found'}), 404
 
 
 @socketio.on('update_streams')
@@ -779,17 +818,14 @@ def on_connect():
         background_thread = threading.Thread(target=background_task_socketio)
         background_thread.daemon = True
         background_thread.start()
-    print("Client connected, background task started")
 
 # Menghentikan tugas latar belakang saat klien disconnect
 @socketio.on('disconnect')
 def on_disconnect():
     global thread_running
     stop_background_task()
-    print("Client disconnected, background task stopped")
 
 def stop_background_task():
-    """Hentikan hanya thread latar belakang tanpa menghentikan server"""
     global thread_running, background_thread
     if thread_running:
         thread_running = False
@@ -810,13 +846,13 @@ def subscriptions():
     subscription_types = SubscriptionType.query.all()
     if request.method == 'POST':
         if user.is_admin:
-            flash('Admin tidak bisa berlangganan', 'error')
+            flash('Admin tidak bisa berlangganan', 'error') if is_indonesian_ip() else flash('Admin cannot subscribe', 'error')
             return redirect(url_for('subscriptions'))
         subscription_type_id = request.form['subscription_type_id']
         subscription = Subscription(user_id=get_session_user_id(), subscription_type_id=subscription_type_id, is_active=False)
         db.session.add(subscription)
         db.session.commit()
-        flash('Berhasil berlangganan', 'success')
+        flash('Berhasil berlangganan', 'success') if is_indonesian_ip() else flash('Successfully subscribed', 'success')
         return redirect(url_for('subscriptions'))
     return render_template('subscriptions.html', form=form, subscription_types=subscription_types, subscriptions=subscriptions)
 
@@ -826,13 +862,13 @@ def delete_subscription(id):
     subscription = Subscription.query.get(id)
     if subscription:
         if subscription.is_active:
-            flash('Tidak bisa menghapus subscription yang aktif', 'error')
+            flash('Tidak bisa menghapus subscription yang aktif', 'error') if is_indonesian_ip() else flash('Cannot delete active subscription', 'error')
             return redirect(url_for('subscriptions'))
         db.session.delete(subscription)
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil menghapus subscription'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil menghapus subscription'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully delete subscription'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Subscription not found'}), 404
 
 @app.route('/activate_subscription/<int:id>', methods=['GET'])
 @login_admin_required
@@ -849,9 +885,9 @@ def activate_subscription(id):
         subscription.end_at = subscription.start_at + timedelta(days=duration_days)
         subscription.duration = timedelta(days=duration_days)
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan subscription'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan subscription'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully activate subscription'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Subscription not found'}), 404
 
 
 @app.route('/deactivate_subscription/<int:id>', methods=['GET'])
@@ -862,9 +898,9 @@ def deactivate_subscription(id):
         subscription.is_active = False
         subscription.end_at = datetime.now()
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan subscription'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan subscription'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully deactivate subscription'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'Subscription tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Subscription not found'}), 404
 
 @app.route('/users', methods=['GET', 'POST'])
 @login_admin_required
@@ -877,37 +913,37 @@ def users():
             password = request.form['password']
             password_confirm = request.form['password_confirm']
             if username == '':
-                flash('Username tidak boleh kosong', 'error')
+                flash('Username tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Username must not be empty', 'error')
                 return redirect(url_for('users'))
             if email == '':
-                flash('Email tidak boleh kosong', 'error')
+                flash('Email tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Email must not be empty', 'error')
                 return redirect(url_for('users'))
             if password == '':
-                flash('Password tidak boleh kosong', 'error')
+                flash('Password tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Password must not be empty', 'error')
                 return redirect(url_for('users'))
             if password_confirm == '':
-                flash('Konfirmasi password tidak boleh kosong', 'error')
+                flash('Konfirmasi password tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Password confirmation must not be empty', 'error')
                 return redirect(url_for('users'))
             if password != password_confirm:
-                flash('Password dan konfirmasi password tidak sama', 'error')
+                flash('Password dan konfirmasi password tidak sama', 'error') if is_indonesian_ip() else flash('Password and password confirmation are not the same', 'error')
                 return redirect(url_for('users'))
             is_admin = request.form.get('is_admin') == 'y'
             # search username or email in database
             user = User.query.filter_by(username=username).first()
             if user:
-                flash('Username sudah ada', 'error')
-                return jsonify({'status': 'error', 'message': 'Username sudah ada'}), 400
+                flash('Username sudah ada', 'error') if is_indonesian_ip() else flash('Username already exists', 'error')
+                return jsonify({'status': 'error', 'message': 'Username sudah ada'}), 400 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Username already exists'}), 400
             user = User.query.filter_by(email=email).first()
             if user:
                 flash('Email sudah ada', 'error')
-                return jsonify({'status': 'error', 'message': 'Email sudah ada'}), 400
+                return jsonify({'status': 'error', 'message': 'Email sudah ada'}), 400 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Email already exists'}), 400
             user = User(username=username, email=email, is_admin=is_admin)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            return jsonify({'status': 'success', 'message': 'Berhasil menambahkan user'}), 200
+            return jsonify({'status': 'success', 'message': 'Berhasil menambahkan user'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully add user'}), 200
         except Exception as e:
-            return jsonify({'status': 'error', 'message': f'Gagal menambahkan user {e}'}), 400
+            return jsonify({'status': 'error', 'message': f'Gagal menambahkan user {e}'}), 400 if is_indonesian_ip() else jsonify({'status': 'error', 'message': f'Failed to add user {e}'}), 400
     users = User.query.all()
     return render_template('users.html', users=users, form=form)
 
@@ -918,9 +954,9 @@ def delete_user(id):
     if user:
         db.session.delete(user)
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil menghapus user'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil menghapus user'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully delete user'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'User not found'}), 404
 
 @app.route('/edit_user/<int:id>', methods=['GET', 'POST'])
 @login_admin_required
@@ -933,14 +969,14 @@ def edit_user(id):
         password = request.form['password']
         confirm_password = request.form['confirm_password']
         if username == '':
-            flash('Username tidak boleh kosong', 'error')
+            flash('Username tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Username must not be empty', 'error')
             return redirect(url_for('edit_user', id=id))
         if email == '':
-            flash('Email tidak boleh kosong', 'error')
+            flash('Email tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Email must not be empty', 'error')
             return redirect(url_for('edit_user', id=id))
         if password and password != '':
             if password != confirm_password:
-                flash('Password dan konfirmasi password tidak sama', 'error')
+                flash('Password dan konfirmasi password tidak sama', 'error') if is_indonesian_ip() else flash('Password and password confirmation are not the same', 'error')
                 return redirect(url_for('edit_user', id=id))
         is_admin = request.form.get('is_admin') == 'y'
         user.username = username
@@ -959,36 +995,36 @@ def activate_user(id):
     if user:
         user.is_active = True
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan user'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil mengaktifkan user'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully activate user'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'User not found'}), 404
 
 @app.route('/deactivate_user/<int:id>', methods=['GET'])
 @login_admin_required
 def deactivate_user(id):
     if id == get_session_user_id():
-        return jsonify({'status': 'error', 'message': 'Tidak bisa menonaktifkan user sendiri'}), 403
+        return jsonify({'status': 'error', 'message': 'Tidak bisa menonaktifkan user sendiri'}), 403 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Cannot deactivate yourself'}), 403
     user = User.query.filter_by(id=id).first()
     if user:
         user.is_active = False
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan user'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil menonaktifkan user'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully deactivate user'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'User not found'}), 404
 
 #  revoke_admin
 @app.route('/revoke_admin/<int:id>', methods=['GET'])
 @login_admin_required
 def revoke_admin(id):
     if id == get_session_user_id():
-        return jsonify({'status': 'error', 'message': 'Tidak bisa mencabut hak admin sendiri'}), 403
+        return jsonify({'status': 'error', 'message': 'Tidak bisa mencabut hak admin sendiri'}), 403 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Cannot revoke yourself as admin'}), 403
     user = User.query.filter_by(id=id).first()
     if user:
         user.is_admin = False
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil mencabut hak admin user'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil mencabut hak admin user'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully revoke user as admin'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'User not found'}), 404
 
 # grant_admin
 @app.route('/grant_admin/<int:id>', methods=['GET'])
@@ -998,9 +1034,9 @@ def grant_admin(id):
     if user:
         user.is_admin = True
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil memberikan hak admin user'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil memberikan hak admin user'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully grant user as admin'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'User not found'}), 404
 
 # reset_password
 @app.route('/reset_password/<int:id>', methods=['GET'])
@@ -1010,12 +1046,12 @@ def reset_password(id):
     user = User.query.filter_by(id=id).first()
     if user:
         if user.id != get_session_user_id() and not logged_in_user.is_admin:
-            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'You do not have access'}), 403
         user.set_password('password')
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Berhasil mereset password user'}), 200
+        return jsonify({'status': 'success', 'message': 'Berhasil mereset password user'}), 200 if is_indonesian_ip() else jsonify({'status': 'success', 'message': 'Successfully reset user password'}), 200
     else:
-        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'User tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'User not found'}), 404
         
 
 # settings
@@ -1030,14 +1066,14 @@ def settings():
         password = request.form['password']
         password_confirm = request.form['password_confirm']
         if username == '':
-            flash('Username tidak boleh kosong', 'error')
+            flash('Username tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Username must not be empty', 'error')
             return redirect(url_for('settings'))
         if email == '':
-            flash('Email tidak boleh kosong', 'error')
+            flash('Email tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Email must not be empty', 'error')
             return redirect(url_for('settings'))
         if password and password != '':
             if password != password_confirm:
-                flash('Password dan konfirmasi password tidak sama', 'error')
+                flash('Password dan konfirmasi password tidak sama', 'error') if is_indonesian_ip() else flash('Password and password confirmation are not the same', 'error')
                 return redirect(url_for('settings'))
         user.username = username
         user.email = email
@@ -1045,9 +1081,9 @@ def settings():
             user.set_password(password)
         try:
             db.session.commit()
-            flash('Berhasil mengupdate user', 'success')
+            flash('Berhasil mengupdate user', 'success') if is_indonesian_ip() else flash('Successfully update user', 'success')
         except Exception as e:
-            flash(f'Gagal mengupdate user {e}', 'error')
+            flash(f'Gagal mengupdate user {e}', 'error') if is_indonesian_ip() else flash(f'Failed to update user {e}', 'error')
     return render_template('settings.html', form=form)
 
 @app.route('/video/<int:id>', methods=['GET'])
@@ -1055,9 +1091,9 @@ def settings():
 def video(id):
     video = Videos.query.filter_by(id=id).first()
     if not video:
-        return jsonify({'status': 'error', 'message': 'Video tidak ditemukan'}), 404
+        return jsonify({'status': 'error', 'message': 'Video tidak ditemukan'}), 404 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'Video not found'}), 404
     else:
         if video.user_id != int(get_session_user_id()):
-            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403 if is_indonesian_ip() else jsonify({'status': 'error', 'message': 'You do not have access'}), 403
         else:
             return jsonify({'status': 'success', 'video': {'id': video.id, 'judul': video.judul, 'deskripsi': video.deskripsi, 'path': video.path}}), 200
