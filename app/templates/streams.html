@@ -14,7 +14,7 @@
 
 <a href="#" id="add_stream" class="btn btn-success">➕ Add Stream</a>
 {% if not user.is_use_api %}
-<a href="{{ url_for('authorize') }}" class="btn btn-primary">🔒 Authorize</a>
+<a href="{{ url_for('authorize') }}" class="btn btn-primary" title="Authorize to use API">🔒 Authorize</a>
 {% else %}
 <a href="{{ url_for('revoke') }}" class="btn btn-danger btn-revoke">🔓 Revoke</a>
 {% endif %}
