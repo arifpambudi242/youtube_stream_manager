@@ -34,7 +34,7 @@
                 {% endif %}
                 <p class="card-text"><strong>Start at:</strong> 🎬 {{ stream.start_at }}</p>
                 <p class="card-text"><strong>End at:</strong> 🛑 {{ stream.end_at }}</p>
-                <p class="card-text"><strong>Kode Stream:</strong> 🔑 {{ stream.kode_stream }}</p>
+                <p class="card-text"><strong>Stream Key:</strong> 🔑 {{ stream.kode_stream }}</p>
                 <p class="card-text"><strong>Video:</strong> 📹 {{ stream.video.judul }}</p>
                 <p class="card-text"><strong>Status:</strong> {% if stream.is_active %}✔️ Active{% else %}❌ Inactive{% endif %}</p>
                 <p class="card-text"><strong>duration</strong> <span id="duration-stream-{{ stream.id }}" >{{ stream.duration}}</span></p>

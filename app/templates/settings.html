@@ -57,7 +57,11 @@
 
         <!-- Submit Button -->
         <div class="mb-3">
-            <button type="submit" class="btn btn-success form-control">💾 Simpan Perubahan</button>
+            {% if is_indonesia %}
+                <button type="submit" class="btn btn-success form-control">💾 Simpan Perubahan</button>
+            {% else %}
+                <button type="submit" class="btn btn-success form-control">💾 Save Changes</button>
+            {% endif %}
         </div>
     </form>
 {% endblock %}
@@ -70,13 +74,13 @@
     $('form').on('submit', function (e) {
         e.preventDefault();
         Swal.fire({
-            title: 'Apakah Anda yakin?',
-            text: "Anda akan menyimpan perubahan akun Anda!",
+            title: {% if is_indonesia %}'Apakah Anda yakin?'{% else %}'Are you sure?'{% endif %},
+            text: {% if is_indonesia %}'Anda tidak akan bisa mengembalikan perubahan ini!'{% else %}'You will not be able to revert this!'{% endif %},
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#d33',
-            confirmButtonText: 'Ya, simpan!'
+            confirmButtonText: {% if is_indonesia %}'Ya, simpan perubahan!'{% else %}'Yes, save changes!'{% endif %}
         }).then((result) => {
             if (result.isConfirmed) {
                 $(this).unbind('submit').submit();

@@ -103,13 +103,12 @@ class BlankUser:
 def inject_data():
     # is user logged in
     user = None
+    is_indonesia = is_indonesian_ip()
     if key:
         try:
             user_id = get_session_user_id()
             if user_id:
                 user = User.query.get(user_id)
-                is_indonesia = is_indonesian_ip()
-                # get user ip
                 ip = request.headers.get('X-Forwarded-For', request.remote_addr)
                 ip = ip.split(',')[0] if ',' in ip else ip
             else:
