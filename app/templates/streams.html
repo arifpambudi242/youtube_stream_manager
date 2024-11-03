@@ -13,6 +13,14 @@
 {% endwith %}
 
 <a href="#" id="add_stream" class="btn btn-success">➕ Add Stream</a>
+{% if not user.is_use_api %}
+<a href="{{ url_for('authorize') }}" class="btn btn-primary">🔒 Authorize</a>
+{% else %}
+<a href="{{ url_for('revoke') }}" class="btn btn-danger btn-revoke">🔓 Revoke</a>
+{% endif %}
+{% if is_admin %}
+<a href="{{ url_for('videos') }}" class="btn btn-primary">📹 Videos</a>
+{% endif %}
 
 <div class="row mt-4">
     {% for stream in streams %}
@@ -63,10 +71,12 @@
                         {{ form.deskripsi.label(class="form-label") }}
                         {{ form.deskripsi(class="form-control") }}
                     </div>
+                    {% if not user.is_use_api %}
                     <div class="mb-3">
                         {{ form.kode_stream.label(class="form-label") }}
                         {{ form.kode_stream(class="form-control") }}
                     </div>
+                    {% endif %}
                     <div class="mb-3">
                         <label for="video">Video</label>
                         <select name="video_id" id="video" class="form-control" required>
@@ -130,7 +140,7 @@
                                 Swal.fire("Success", data.message, "success");
                             }
                             setInterval(function(){
-                                
+                                window.location.reload();
                             }, 1500);
                         }
                     });
@@ -161,7 +171,7 @@
                                 Swal.fire("Success", data.message, "success");
                             }
                             setInterval(function(){
-                                
+                                window.location.reload();
                             }, 1500);
                         }
                     });
@@ -188,7 +198,9 @@
                             if (data.status === 'success'){
                                 // sweet alert 2 notification
                                 Swal.fire("Success", data.message, "success").then((result) => {
-                                    
+                                    setInterval(function(){
+                                        window.location.reload();
+                                    }, 1500);
                                 });
                             }
                         }
@@ -199,16 +211,28 @@
         });
         var length_updated = 0;
         socket.on('update_streams', (msg) => {
+            {% if is_admin %}
+                const stream_id = msg.id;
+                if ($(`#stream-${stream_id}`).length > 0){
+                    location.reload();
+                }
+            {% else %}
             if (msg.user_id == {{ user.id }}){
                 // update only on .card-body
                 window.location.reload();
             }
+            {% endif %}
         });
 
         socket.on('update_duration', (msg) => {
+            
+            {% if is_admin %}
+                $('span#duration-stream-'+msg.id).text(msg.duration);
+            {% else %}
             if (msg.user_id == {{ user.id }}){
                 $('span#duration-stream-'+msg.id).text(msg.duration);
             }
+            {% endif %}
         });
     });
 </script>

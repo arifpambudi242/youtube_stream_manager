@@ -35,6 +35,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now())
     is_active = db.Column(db.Boolean, default=False)
+    is_use_api = db.Column(db.Boolean, default=False)
     def set_password(self, password):
         """Hash password dan simpan ke password_hash"""
         self.password_hash = generate_password_hash(password)
@@ -90,12 +91,12 @@ class Oauth2Credentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('oauth2_credentials', lazy=True))
-    token = db.Column(db.Text, nullable=False)
-    refresh_token = db.Column(db.Text, nullable=False)
-    token_uri = db.Column(db.Text, nullable=False)
-    client_id = db.Column(db.Text, nullable=False)
-    client_secret = db.Column(db.Text, nullable=False)
-    scopes = db.Column(db.Text, nullable=False)
+    token = db.Column(db.String(256))
+    refresh_token = db.Column(db.String(256))
+    token_uri = db.Column(db.String(256))
+    client_id = db.Column(db.String(256))
+    client_secret = db.Column(db.String(256))
+    scopes = db.Column(db.String(256))
     created_at = db.Column(db.DateTime, default=datetime.now())
     updated_at = db.Column(db.DateTime, default=datetime.now())
     def __repr__(self):
@@ -140,6 +141,18 @@ class Oauth2Credentials(db.Model):
             client_secret=self.client_secret,
             scopes=self.scopes
         )
+    
+    def revoke(self):
+        credentials = self.to_credentials()
+        response = requests.post('https://oauth2.googleapis.com/revoke',
+                      params={'token': credentials.token},
+                      headers={'content-type': 'application/x-www-form-urlencoded'})
+        
+        if response.status_code == 200:
+            return True
+        else:
+            return False
+    
 
 def seed():
     # Check if users table is empty

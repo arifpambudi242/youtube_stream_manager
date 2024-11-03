@@ -1,0 +1,4 @@
+jika user menggunakan API maka is_use_api = True
+jika user tidak menggunakan API maka is_use_api = False
+
+saat tambah streams jika is_use_api = False maka stream key tidak di generate

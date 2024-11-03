@@ -263,6 +263,90 @@ def login():
     
     return render_template('login.html', form=form)
 
+@app.route('/authorize/')
+@login_required
+@subscription_required
+def authorize():
+    user_id = get_session_user_id()
+    user = User.query.filter_by(id=user_id, is_active=True).first()
+    oauth = Oauth2Credentials.query.filter_by(user_id=user_id).first()
+    if user:
+        if oauth:
+            flash('User sudah diotorisasi', 'error')
+            # redirect to referrer if available, else to index
+            return redirect(request.referrer or url_for('index'))
+        
+        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+            CLIENT_SECRETS_FILE, scopes=SCOPES)
+
+        flow.redirect_uri = url_for('oauth2callback', _external=True)
+
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true')
+
+        return redirect(authorization_url)
+    else:
+        flash('User tidak ditemukan', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/oauth2callback', methods=['GET'])
+@login_required
+@subscription_required
+def oauth2callback():
+    state = request.args.get('state')
+    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
+    flow.redirect_uri = url_for('oauth2callback', _external=True)
+
+    authorization_response = request.url
+    flow.fetch_token(authorization_response=authorization_response)
+    credentials = Oauth2Credentials(
+        token=flow.credentials.token,
+        refresh_token=flow.credentials.refresh_token,
+        token_uri=flow.credentials.token_uri,
+        client_id=flow.credentials.client_id,
+        client_secret=flow.credentials.client_secret,
+        scopes=','.join(flow.credentials.scopes),
+        user_id=get_session_user_id()
+    )
+    db.session.add(credentials)
+    try:
+        db.session.commit()
+        flash('Berhasil mengotorisasi', 'success')
+    except Exception as e:
+        flash(f'Gagal mengotorisasi {e}', 'error')
+    
+    # ubah is_use_api menjadi True
+    user = User.query.filter_by(id=get_session_user_id()).first()
+    user.is_use_api = True
+    db.session.commit()
+    # redirect to referrer if available, else to index
+    return redirect(request.referrer or url_for('index'))
+
+# revoke
+@app.route('/revoke')
+@login_required
+@subscription_required
+def revoke():
+    user_id = get_session_user_id()
+    oauth = Oauth2Credentials.query.filter_by(user_id=user_id).first()
+    if oauth:
+        oauth.revoke()
+        db.session.delete(oauth)
+        db.session.commit()
+        user = User.query.filter_by(id=user_id).first()
+        user.is_use_api = False
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Berhasil me-revoke akses'}), 200
+    else:
+        user = User.query.filter_by(id=user_id).first()
+        user.is_use_api = False
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'User sudah direvoke'}), 200
+    
+
+
 # logout
 @app.route('/logout')
 def logout():
@@ -381,6 +465,11 @@ def edit_video(id):
 @login_required
 @subscription_required
 def streams():
+    is_autorisasi = False
+    user_id = get_session_user_id()
+    oauth = Oauth2Credentials.query.filter_by(user_id=user_id).first()
+    if oauth:
+        is_autorisasi = True
     form = StreamForm()
     # if user is admin, show all streams
     user = User.query.get(get_session_user_id())
@@ -394,7 +483,7 @@ def streams():
     if request.method == 'POST':
         judul = request.form['judul']
         deskripsi = request.form['deskripsi']
-        kode_stream = request.form['kode_stream']
+        kode_stream = request.form['kode_stream'] if 'kode_stream' in request.form else ''
         start_at = request.form['start_at']
         end_at = request.form['end_at']
         video_id = request.form['video_id']
@@ -406,8 +495,12 @@ def streams():
             flash('Deskripsi tidak boleh kosong', 'error')
             return redirect(url_for('streams'))
         if kode_stream == '':
-            flash('Kode stream tidak boleh kosong', 'error')
-            return redirect(url_for('streams'))
+            if not is_autorisasi:
+                flash('Kode stream tidak boleh kosong', 'error')
+                return redirect(url_for('streams'))
+            else:
+                kode_stream = bind_broadcast_and_livestream(judul, deskripsi, start_at)
+
         if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
             flash('Anda tidak memiliki akses', 'error')
             return redirect(url_for('streams'))
@@ -428,10 +521,72 @@ def streams():
         
         flash('Stream berhasil dibuat', 'success')
         return redirect(url_for('streams'))
-    return render_template('streams.html', form=form, streams=streams, videos=videos)
+    return render_template('streams.html', form=form, streams=streams, videos=videos, is_autorisasi=is_autorisasi)
 
+def bind_broadcast_and_livestream(title, description, start_at=None):
+    credentials = Oauth2Credentials.query.filter_by(user_id=get_session_user_id()).first()
+    if not credentials:
+        return redirect('authorize')
+    
+    credentials = google.oauth2.credentials.Credentials(
+        token=credentials.token,
+        refresh_token=credentials.refresh_token,
+        token_uri=credentials.token_uri,
+        client_id=credentials.client_id,
+        client_secret=credentials.client_secret,
+        scopes=credentials.scopes
+    )
+    youtube = googleapiclient.discovery.build(
+        API_SERVICE_NAME, API_VERSION, credentials=credentials)
+    
+    # get list latest broadcast
+    request = youtube.liveBroadcasts().list(
+        part="snippet,contentDetails,status",
+        broadcastStatus="all",
+        broadcastType="all"
+    )
+    response = request.execute()
+    if response['items']:
+        # get latest broadcast
+        broadcast_id = response['items'][0]['id']
 
-# stream checker
+    # update broadcast
+    request = youtube.liveBroadcasts().update(
+        part="snippet",
+        body={
+            "id": broadcast_id,
+            "snippet": {
+                "title": title,
+                "description": description
+            }
+        }
+    )
+    response = request.execute()
+    # get stream id
+    request = youtube.liveBroadcasts().list(
+        part="snippet,contentDetails,status",
+        id=broadcast_id
+    )
+    response = request.execute()
+    stream_id = response['items'][0]['contentDetails']['boundStreamId']
+    # update stream
+    request = youtube.liveStreams().update(
+        part="id,snippet, cdn",
+        body={
+            "id": stream_id,
+            "snippet": {
+                "title": title,
+                "description": description
+            },
+            "cdn": {
+                "ingestionType": "rtmp"
+            }
+        }
+    )
+    response = request.execute()
+    # return stream kode
+    return response['cdn']['ingestionInfo']['streamName']
+    
 
 # start stream
 @app.route('/start_stream/<int:id>', methods=['GET'])

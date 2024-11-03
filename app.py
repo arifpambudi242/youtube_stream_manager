@@ -83,4 +83,5 @@ if __name__ == "__main__":
     HOST = os.getenv("HOST")
     with app.app_context():
         seed()
-    socketio.run(app, host=HOST, port=5000)
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+    socketio.run(app, host=HOST, port=8080)

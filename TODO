@@ -1,0 +1,6 @@
+buat table is_use API
+
+kolom
+- id
+- user_id
+- is_use_api 
