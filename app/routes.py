@@ -1049,3 +1049,15 @@ def settings():
         except Exception as e:
             flash(f'Gagal mengupdate user {e}', 'error')
     return render_template('settings.html', form=form)
+
+@app.route('/video/<int:id>', methods=['GET'])
+@login_required
+def video(id):
+    video = Videos.query.filter_by(id=id).first()
+    if not video:
+        return jsonify({'status': 'error', 'message': 'Video tidak ditemukan'}), 404
+    else:
+        if video.user_id != int(get_session_user_id()):
+            return jsonify({'status': 'error', 'message': 'Anda tidak memiliki akses'}), 403
+        else:
+            return jsonify({'status': 'success', 'video': {'id': video.id, 'judul': video.judul, 'deskripsi': video.deskripsi, 'path': video.path}}), 200

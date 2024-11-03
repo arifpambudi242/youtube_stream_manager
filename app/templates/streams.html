@@ -64,6 +64,22 @@
                 <form action="" enctype="multipart/form-data" method="post">
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
+                        <label for="video">Video</label>
+                        <select name="video_id" id="video" class="form-control" required>
+                            {% if videos|length == 0 %}
+                                <option value="">No Video - Upload first</option>
+                            {% else %}
+                                <option value="">Select a Video</option>
+                            {% endif %}
+                            {% for video in videos %}
+                                <option value="{{ video.id }}">{{ video.judul }} - {{ video.deskripsi|truncate(20, True) }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if videos|length == 0 %}
+                            <a href="{{ url_for('videos') }}" class="btn btn-primary mt-2">📹 Upload Video</a>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
                         {{ form.judul.label(class="form-label") }}
                         {{ form.judul(class="form-control", autofocus=True) }}
                     </div>
@@ -77,19 +93,6 @@
                         {{ form.kode_stream(class="form-control") }}
                     </div>
                     {% endif %}
-                    <div class="mb-3">
-                        <label for="video">Video</label>
-                        <select name="video_id" id="video" class="form-control" required>
-                            {% if videos|length == 0 %}
-                                <option value="">No Video - Upload first</option>
-                            {% else %}
-                                <option value="">Select a Video</option>
-                            {% endif %}
-                            {% for video in videos %}
-                                <option value="{{ video.id }}">{{ video.judul }} - {{ video.deskripsi|truncate(20, True) }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
                     <div class="mb-3">
                         {{ form.start_at.label(class="form-label") }} <i class="bi bi-clock"></i>
                         {{ form.start_at(class="form-control") }}
@@ -222,6 +225,21 @@
                 window.location.reload();
             }
             {% endif %}
+        });
+
+        // if video selected
+        $('#video').change(function () {
+            const video_id = $(this).val();
+            if (video_id === ''){
+                return;
+            }
+            $.ajax({
+                url: `/video/${video_id}`,
+                success: function (data) {
+                    $('input[name="judul"]').val(data.video.judul);
+                    $('textarea[name="deskripsi"]').text(data.video.deskripsi);
+                }
+            });
         });
 
         socket.on('update_duration', (msg) => {
