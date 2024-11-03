@@ -76,7 +76,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
     DEBUG = os.getenv("DEBUG")
-    # print .env location
+    PORT = os.getenv("PORT") if os.getenv("PORT") else 5000
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=10)
     scheduler.start()
@@ -84,4 +84,4 @@ if __name__ == "__main__":
     with app.app_context():
         seed()
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-    socketio.run(app, host=HOST, port=8080)
+    socketio.run(app, host=HOST, port=PORT)
