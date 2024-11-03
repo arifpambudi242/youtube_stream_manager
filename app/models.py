@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from app import db
+from app import *
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -85,6 +85,61 @@ class Streams(db.Model):
     @property
     def start_at_str(self):
         return self.start_at.strftime('%Y-%m-%d %H:%M')
+
+class Oauth2Credentials(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('oauth2_credentials', lazy=True))
+    token = db.Column(db.Text, nullable=False)
+    refresh_token = db.Column(db.Text, nullable=False)
+    token_uri = db.Column(db.Text, nullable=False)
+    client_id = db.Column(db.Text, nullable=False)
+    client_secret = db.Column(db.Text, nullable=False)
+    scopes = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now())
+    def __repr__(self):
+        return f'<Oauth2Credentials {self.user_id}>'
+    
+    def to_dict(self):
+        return {
+            'token': self.token,
+            'refresh_token': self.refresh_token,
+            'token_uri': self.token_uri,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'scopes': self.scopes
+        }
+    
+    @staticmethod
+    def from_dict(data):
+        return Oauth2Credentials(
+            token=data['token'],
+            refresh_token=data['refresh_token'],
+            token_uri=data['token_uri'],
+            client_id=data['client_id'],
+            client_secret=data['client_secret'],
+            scopes=data['scopes']
+        )
+    
+    def update(self, data):
+        self.token = data['token']
+        self.refresh_token = data['refresh_token']
+        self.token_uri = data['token_uri']
+        self.client_id = data['client_id']
+        self.client_secret = data['client_secret']
+        self.scopes = data['scopes']
+        self.updated_at = datetime.now()
+    
+    def to_credentials(self):
+        return google.oauth2.credentials.Credentials(
+            token=self.token,
+            refresh_token=self.refresh_token,
+            token_uri=self.token_uri,
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            scopes=self.scopes
+        )
 
 def seed():
     # Check if users table is empty
