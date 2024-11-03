@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-    <h1 class="mb-4">⚙️ Pengaturan Akun</h1>
+    <h1 class="mb-4">⚙️ {% if is_indonesia %}Pengaturan Akun{% else %}Account Settings{% endif %}</h1>
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=True) %}

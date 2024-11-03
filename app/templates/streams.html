@@ -12,33 +12,42 @@
 {% endif %}
 {% endwith %}
 
-<a href="#" id="add_stream" class="btn btn-success">➕ Add Stream</a>
-{% if not user.is_use_api %}
-<a href="{{ url_for('authorize') }}" class="btn btn-primary" title="Authorize to use API">🔒 Authorize</a>
-{% else %}
-<a href="{{ url_for('revoke') }}" class="btn btn-danger btn-revoke">🔓 Revoke</a>
-{% endif %}
-{% if is_admin %}
-<a href="{{ url_for('videos') }}" class="btn btn-primary">📹 Videos</a>
-{% endif %}
+
+<div class="d-flex justify-content-between">
+    <a href="#" id="add_stream" class="btn btn-success me-2">➕ Add Stream</a>
+    <div>
+        {% if not user.is_use_api %}
+        <a href="{{ url_for('authorize') }}" class="btn btn-primary me-2" title="Authorize to use API">🔒 Authorize</a>
+        {% else %}
+        <a href="{{ url_for('revoke') }}" class="btn btn-danger btn-revoke me-2">🔓 Revoke</a>
+        {% endif %}
+        {% if is_admin %}
+        <a href="{{ url_for('videos') }}" class="btn btn-primary">📹 Videos</a>
+        {% endif %}
+    </div>
+</div>
 
 <div class="row mt-4">
     {% for stream in streams %}
     <div class="col-md-4" id="stream-{{ stream.id }}">
-        <div class="card mb-3 shadow-sm">
+        <div class="card mb-3 shadow-lg border-0">
             <div class="card-body">
-                <h5 class="card-title">🎵 {{ stream.judul }}</h5>
-                <p class="card-text">{{ stream.deskripsi }}</p>
+                <h5 class="card-title text-primary">🎵 {{ stream.judul }}</h5>
+                <p class="card-text">{{ stream.deskripsi|truncate(100) }}</p>
                 {% if is_admin %}
                     <p class="card-text"><strong>Created by:</strong> {{ stream.user.username }}</p>
                 {% endif %}
                 <p class="card-text"><strong>Start at:</strong> 🎬 {{ stream.start_at }}</p>
                 <p class="card-text"><strong>End at:</strong> 🛑 {{ stream.end_at }}</p>
-                <p class="card-text"><strong>Stream Key:</strong> 🔑 {{ stream.kode_stream }}</p>
-                <p class="card-text"><strong>Video:</strong> 📹 {{ stream.video.judul }}</p>
-                <p class="card-text"><strong>Status:</strong> {% if stream.is_active %}✔️ Active{% else %}❌ Inactive{% endif %}</p>
-                <p class="card-text"><strong>duration</strong> <span id="duration-stream-{{ stream.id }}" >{{ stream.duration}}</span></p>
-                <p class="card-text"><strong>Repeat:</strong> {% if stream.is_repeat %}🔁 Yes{% else %}❌ No{% endif %}</p>
+                <button class="btn-detail w-100 mb-4" data-id="{{ stream.id }}">⬇️ show more </button>
+                <div id="details-{{ stream.id }}" class="stream-details" style="display: none;">
+                    <p class="card-text" title="{{stream.kode_stream}}"><strong>Stream Key:</strong> 🔑 {{ '*' * (stream.kode_stream|length - 3) }}</p>
+                    <p class="card-text"><strong>Video:</strong> 📹 {{ stream.video.judul|truncate(20) }}</p>
+                    <p class="card-text"><strong>Status:</strong> {% if stream.is_active %}✔️ Active{% else %}❌ Inactive{% endif %}</p>
+                    <p class="card-text"><strong>Duration:</strong> <span id="duration-stream-{{ stream.id }}">{{ stream.duration }}</span></p>
+                    <p class="card-text"><strong>Repeat:</strong> {% if stream.is_repeat %}🔁 Yes{% else %}❌ No{% endif %}</p>
+                </div>
+                <div class="mt-4">
                 {% if not stream.is_active %}
                     <a href="{{ url_for('start_stream', id=stream.id) }}" id="start-{{ stream.id }}" data-id="{{ stream.id }}" class="start_stream btn btn-primary">▶️ Start</a>
                 {% else %}
@@ -46,6 +55,7 @@
                 {% endif %}
                 <a href="{{ url_for('edit_stream', id=stream.id) }}" id="edit-{{ stream.id }}" class="btn btn-warning">✏️ Edit</a>
                 <a href="{{ url_for('delete_stream', id=stream.id) }}" id="delete-{{ stream.id }}" class="btn btn-danger">🗑️ Delete</a>
+                </div>
             </div>
         </div>
     </div>
@@ -243,6 +253,22 @@
                     Swal.fire("Error", "Failed to get video data", "error");
                 }
             });
+        });
+
+        // detail stream
+        $('.btn-detail').click(function () {
+            const stream_id = $(this).data('id');
+            $(`#details-${stream_id}`).toggle();
+            // change text
+            if ($(`#details-${stream_id}`).is(':visible')){
+                // change btn location
+                $('html, body').animate({
+                    scrollTop: $(`#details-${stream_id}`).offset().top
+                }, 1000);
+                $(this).text('⬆️ show less ');
+            } else {
+                $(this).text('⬇️ show more ');
+            }
         });
 
         socket.on('update_duration', (msg) => {

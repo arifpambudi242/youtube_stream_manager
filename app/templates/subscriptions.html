@@ -71,8 +71,8 @@
 </ul>
 {% endblock %}
 
-{% if is_admin %}
 {% block scripts %}
+{% if is_admin %}
 <script>
         $(document).ready(function() {
             $('.btn-danger').click(function(e) {
@@ -163,5 +163,5 @@
 
         });
 </script>
-{% endblock %}
 {% endif %}
+{% endblock %}
