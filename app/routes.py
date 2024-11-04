@@ -586,7 +586,7 @@ def bind_broadcast_and_livestream(title, description):
         return redirect('authorize')
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
         CLIENT_SECRETS_FILE, SCOPES)
-    credentials = flow.run_console()
+    credentials = credentials.to_credentials()
     youtube = googleapiclient.discovery.build(
         API_SERVICE_NAME, API_VERSION, credentials=credentials)
     
