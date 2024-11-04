@@ -2,7 +2,7 @@ import os
 import threading
 import time
 import re
-from flask import render_template, request, redirect, url_for, session, flash, jsonify
+from flask import render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from functools import wraps, lru_cache
 from app import *
 from cryptography.fernet import Fernet
@@ -119,6 +119,11 @@ def inject_data():
 def index():
     return render_template('index.html')
 
+# GET /favicon.ico
+@app.route('/favicon.ico')
+def favicon():
+    # static/img/logo.ico
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico')
 
 def is_indonesian_ip():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
