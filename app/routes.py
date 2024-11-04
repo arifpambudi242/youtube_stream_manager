@@ -1,6 +1,4 @@
 import os
-import signal
-import subprocess
 import threading
 import time
 import re
@@ -11,8 +9,10 @@ from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
 from app.forms import *
 from app.models import *
-import pandas as pd
-import io
+import requests
+import google.oauth2.credentials
+import google_auth_oauthlib.flow
+import googleapiclient.discovery
 key = None
 
 background_thread = None
@@ -147,15 +147,6 @@ def get_ip_info(ip):
     response = requests.get(f"https://ipapi.co/{ip}/json/")
     return response.json() if response.status_code == 200 else None
 
-@app.route("/get_ip_info")
-@limiter.limit("100 per minute")
-def ip_info():
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    ip = ip.split(',')[0] if ',' in ip else ip
-    if not is_valid_ip(ip):
-        return jsonify({"error": "Invalid IP address"}), 400
-    response = requests.get(f"https://ipapi.co/{ip}/json/")
-    return jsonify(response.json()) if response.status_code == 200 else jsonify({"error": "Unable to fetch IP details"}), 500
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -715,6 +706,10 @@ def delete_stream(id):
 def edit_stream(id):
     stream = Streams.query.get(id)
     user = User.query.get(get_session_user_id())
+    if not user:
+        message = 'User tidak ditemukan' if is_indonesian_ip() else 'User not found'
+        flash(message, 'error')
+        return redirect(url_for('streams'))
     if not user.is_admin:
         if stream.user_id != user.id:
             message = 'Anda tidak memiliki akses' if is_indonesian_ip() else 'You do not have access'
