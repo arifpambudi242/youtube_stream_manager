@@ -216,6 +216,10 @@
                                     }, 1500);
                                 });
                             }
+                        },
+                        error: function (err) {
+                            var message = err.responseJSON.message;
+                            Swal.fire("Error", message, "error");
                         }
                     });
                 }

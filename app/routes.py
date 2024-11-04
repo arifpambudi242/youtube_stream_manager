@@ -344,7 +344,7 @@ def oauth2callback():
         token_uri=flow.credentials.token_uri,
         client_id=flow.credentials.client_id,
         client_secret=flow.credentials.client_secret,
-        scopes=str(flow.credentials.scopes),
+        scopes=','.join(flow.credentials.scopes),
         user_id=get_session_user_id()
     )
     db.session.add(credentials)
@@ -391,9 +391,14 @@ def revoke():
                 # Jika gagal me-revoke (status_code bukan 200)
                 message = 'Gagal me-revoke akses' if is_indonesian_ip() else 'Failed to revoke access'
                 return jsonify({'status': 'error', 'message': message}), 400
-        except:
+        except Exception as e:
+            # line 
+            import traceback
+            traceback.print_exc()
+            line = traceback.format_exc().splitlines()[-1]
+
             # Jika terjadi kesalahan pada saat mencoba me-revoke
-            message = 'Gagal me-revoke akses' if is_indonesian_ip() else 'Failed to revoke access'
+            message = 'Gagal me-revoke akses error pada baris ' + line if is_indonesian_ip() else 'Failed to revoke access error on line ' + line
             return jsonify({'status': 'error', 'message': message}), 400
     else:
         # Jika tidak ada oauth, update status user tanpa revoke
@@ -589,59 +594,93 @@ def bind_broadcast_and_livestream(title, description):
     credentials = Oauth2Credentials.query.filter_by(user_id=get_session_user_id()).first()
     if not credentials:
         return redirect('authorize')
-    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE, SCOPES)
-    credentials = credentials.to_credentials()
+    
+    credentials = google.oauth2.credentials.Credentials(
+        token=credentials.token,
+        refresh_token=credentials.refresh_token,
+        token_uri=credentials.token_uri,
+        client_id=credentials.client_id,
+        client_secret=credentials.client_secret,
+        scopes=SCOPES
+    )
+    credentials.refresh(google.auth.transport.requests.Request())
+
     youtube = googleapiclient.discovery.build(
         API_SERVICE_NAME, API_VERSION, credentials=credentials)
     
     # get list latest broadcast
-    request = youtube.liveBroadcasts().list(
-        part="snippet,contentDetails,status",
-        broadcastStatus="all",
-        broadcastType="all"
-    )
-    response = request.execute()
+    headers = {
+        'Authorization': f'Bearer {credentials.token}',
+        'Accept': 'application/json'
+    }
+    params = {
+        'part': 'snippet,contentDetails,status',
+        'broadcastStatus': 'all',
+        'broadcastType': 'all'
+    }
+    response = requests.get('https://www.googleapis.com/youtube/v3/liveBroadcasts', headers=headers, params=params).json()
     if response['items']:
         # get latest broadcast
         broadcast_id = response['items'][0]['id']
 
     # update broadcast
-    request = youtube.liveBroadcasts().update(
-        part="snippet",
-        body={
-            "id": broadcast_id,
-            "snippet": {
-                "title": title,
-                "description": description
-            }
+    headers = {
+        'Authorization': f'Bearer {credentials.token}',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+    data = {
+        "id": broadcast_id,
+        "snippet": {
+            "title": title,
+            "description": description
         }
+    }
+    response = requests.put(
+        'https://www.googleapis.com/youtube/v3/liveBroadcasts',
+        headers=headers,
+        json=data
     )
-    response = request.execute()
+    response = response.json()
     # get stream id
-    request = youtube.liveBroadcasts().list(
-        part="snippet,contentDetails,status",
-        id=broadcast_id
-    )
-    response = request.execute()
+    headers = {
+        'Authorization': f'Bearer {credentials.token}',
+        'Accept': 'application/json'
+    }
+    params = {
+        'part': 'snippet,contentDetails,status',
+        'id': broadcast_id
+    }
+    response = requests.get('https://www.googleapis.com/youtube/v3/liveBroadcasts', headers=headers, params=params).json()
     stream_id = response['items'][0]['contentDetails']['boundStreamId']
     # update stream
-    request = youtube.liveStreams().update(
-        part="id,snippet, cdn",
-        body={
-            "id": stream_id,
-            "snippet": {
-                "title": title,
-                "description": description
-            },
-            "cdn": {
-                "ingestionType": "rtmp"
-            }
+    headers = {
+    'Authorization': f'Bearer {credentials.token}',
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+    }
+
+    params = {
+        'part': 'id,snippet,cdn,status',
+        'id': stream_id,
+        'snippet': {
+            'title': title,
+            'description': description
         }
+    }
+
+    
+
+    response = requests.put(
+        'https://www.googleapis.com/youtube/v3/liveStreams',
+        headers=headers,
+        json=params
     )
-    response = request.execute()
     # return stream kode
+    print(f'reponse {response.json()}')
+    # print(f"response\n\n{response['cdn']['ingestionInfo']['streamName']}\n\n")
     return response['cdn']['ingestionInfo']['streamName']
+    
     
 
 # start stream
