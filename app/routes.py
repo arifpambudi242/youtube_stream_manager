@@ -9,10 +9,6 @@ from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
 from app.forms import *
 from app.models import *
-import requests
-import google.oauth2.credentials
-import google_auth_oauthlib.flow
-import googleapiclient.discovery
 key = None
 
 background_thread = None
@@ -343,7 +339,7 @@ def oauth2callback():
         token_uri=flow.credentials.token_uri,
         client_id=flow.credentials.client_id,
         client_secret=flow.credentials.client_secret,
-        scopes=','.join(flow.credentials.scopes),
+        scopes=str(flow.credentials.scopes),
         user_id=get_session_user_id()
     )
     db.session.add(credentials)
@@ -560,7 +556,7 @@ def streams():
                 flash('Kode stream tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Stream code must not be empty', 'error')
                 return redirect(url_for('streams'))
             else:
-                kode_stream = bind_broadcast_and_livestream(judul, deskripsi, start_at)
+                kode_stream = bind_broadcast_and_livestream(judul, deskripsi)
 
         if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
             flash('Anda tidak memiliki akses', 'error') if is_indonesian_ip() else flash('You do not have access', 'error')
@@ -584,19 +580,13 @@ def streams():
         return redirect(url_for('streams'))
     return render_template('streams.html', form=form, streams=streams, videos=videos, is_autorisasi=is_autorisasi)
 
-def bind_broadcast_and_livestream(title, description, start_at=None):
+def bind_broadcast_and_livestream(title, description):
     credentials = Oauth2Credentials.query.filter_by(user_id=get_session_user_id()).first()
     if not credentials:
         return redirect('authorize')
-    
-    credentials = google.oauth2.credentials.Credentials(
-        token=credentials.token,
-        refresh_token=credentials.refresh_token,
-        token_uri=credentials.token_uri,
-        client_id=credentials.client_id,
-        client_secret=credentials.client_secret,
-        scopes=credentials.scopes
-    )
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, SCOPES)
+    credentials = flow.run_console()
     youtube = googleapiclient.discovery.build(
         API_SERVICE_NAME, API_VERSION, credentials=credentials)
     
