@@ -662,12 +662,18 @@ def bind_broadcast_and_livestream(title, description):
 
     params = {
         'part': 'id,snippet,cdn,status',
-        'id': stream_id,
-        'snippet': {
-            'title': title,
-            'description': description
+        'body': {}
+    }
+
+    body = {
+        "id": stream_id,
+        "snippet": {
+            "title": title,
+            "description": description
         }
     }
+
+    params['body'] = body
 
     
 
