@@ -754,10 +754,6 @@ def edit_stream(id):
         if stream.user_id != user.id:
             message = 'Anda tidak memiliki akses' if is_indonesian_ip() else 'You do not have access'
             flash(message, 'error')
-    if stream.is_active:
-        message = 'Stream sedang berjalan, tidak bisa diubah' if is_indonesian_ip() else 'Stream is running, cannot be changed'
-        flash(message, 'error')
-        return redirect(url_for('streams'))
     form = StreamForm()
     if user.is_admin:
         videos = Videos.query.all()
@@ -767,7 +763,7 @@ def edit_stream(id):
         judul = request.form['judul']
         deskripsi = request.form['deskripsi']
         kode_stream = request.form['kode_stream']
-        start_at = request.form['start_at']
+        start_at = request.form['start_at'] if not stream.is_active else stream.start_at
         end_at = request.form['end_at']
         video_id = request.form['video_id']
         is_repeat = request.form.get('is_repeat') == 'y'
@@ -783,12 +779,13 @@ def edit_stream(id):
             message = 'Kode stream tidak boleh kosong' if is_indonesian_ip() else 'Stream code must not be empty'
             flash(message, 'error')
             return redirect(url_for('edit_stream', id=id))
-        if start_at == '':
-            # langsung mulai tanpa delay
-            start_at = None
-        else:
-            # from convert from this format '2024-10-25T13:18' to like time()
-            start_at = datetime.strptime(start_at, '%Y-%m-%dT%H:%M')
+        if not stream.is_active:
+            if start_at == '':
+                # langsung mulai tanpa delay
+                start_at = None
+            else:
+                # from convert from this format '2024-10-25T13:18' to like time()
+                start_at = datetime.strptime(start_at, '%Y-%m-%dT%H:%M')
         if end_at == '':
             end_at = None
         else:
@@ -796,7 +793,7 @@ def edit_stream(id):
         stream.judul = judul
         stream.deskripsi = deskripsi
         stream.kode_stream = kode_stream
-        stream.start_at = start_at
+        stream.start_at = start_at if not stream.is_active else stream.start_at
         stream.end_at = end_at
         stream.is_repeat = is_repeat
         stream.video_id = video_id
