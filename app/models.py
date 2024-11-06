@@ -26,6 +26,14 @@ class Subscription(db.Model):
     is_active = db.Column(db.Boolean, default=False)
     def __repr__(self):
         return f'<Subscription {self.id}>'
+    
+    @property
+    def is_ended(self):
+        return self.end_at and self.end_at < datetime.now()
+    
+    @property
+    def is_started(self):
+        return self.start_at and self.start_at < datetime.now()
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -77,15 +85,20 @@ class Streams(db.Model):
     is_active = db.Column(db.Boolean, default=False)
     def __repr__(self):
         return f'<Streams {self.judul}>'
-    
-    def is_started(self):
-        return self.pid is not None
     @property
     def end_at_str(self):
         return self.end_at.strftime('%Y-%m-%d %H:%M')
     @property
     def start_at_str(self):
         return self.start_at.strftime('%Y-%m-%d %H:%M')
+    
+    @property
+    def is_ended(self):
+        return self.end_at and self.end_at < datetime.now()
+    
+    @property
+    def is_started(self):
+        return self.start_at and self.start_at < datetime.now()
 
 class Oauth2Credentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)
