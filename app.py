@@ -24,17 +24,16 @@ def check_scheduled_stream():
             # start_at == current_time start stream
             if not stream.is_active and stream.is_started:
                 # check if stream is already started
-                if not stream.is_started():
-                    stream_ = Streams.query.filter_by(id=stream.id).first()
-                    # start stream
-                    stream_.pid = start_stream_youtube(stream_.video.path, stream_.kode_stream, repeat=stream_.is_repeat)
-                    stream_.is_active = True
-                    db.session.commit()
+                stream_ = Streams.query.filter_by(id=stream.id).first()
+                # start stream
+                stream_.pid = start_stream_youtube(stream_.video.path, stream_.kode_stream, repeat=stream_.is_repeat)
+                stream_.is_active = True
+                db.session.commit()
 
             # end_at == current_time stop stream
             if stream.is_active and stream.is_ended:
                 stream_ = Streams.query.filter_by(id=stream.id).first()
-                if stream.is_started():
+                if stream.is_started:
                     # stop stream
                     is_stream_alive = is_stream_started(stream_.pid)
                     if is_stream_alive and stream_.pid:
