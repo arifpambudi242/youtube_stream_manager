@@ -8,11 +8,11 @@ import psutil
 def stream_to_youtube(video_path, stream_key, repeat=True):
     video_path = f'app/static/{video_path}'.replace('\\', '/')
     youtube_rtmp_url = f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'  # Ganti stream_key sesuai kebutuhan
-    
+    print(f'Streaming {video_path} to {youtube_rtmp_url}{" in loop" if repeat else ""}...')
     command = [
         'ffmpeg',
         '-re',  # Membaca input sesuai kecepatan frame asli
-        '-i', video_path,  # Jalur video input
+        '-i', f"{video_path}",  # Jalur video input
         '-c:v', 'libx264',  # Codec video
         '-preset', 'veryfast',  # Kecepatan encoding
         '-maxrate', '3000k',  # Bitrate maksimal

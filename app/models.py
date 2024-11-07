@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from app import *
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,7 +10,7 @@ class SubscriptionType(db.Model):
     price = db.Column(db.Integer, nullable=False)
     duration = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now())
-    updated_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     is_active = db.Column(db.Boolean, default=False)
     def __repr__(self):
         return f'<SubscriptionType {self.name}>'
@@ -42,6 +42,7 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     password_hash = db.Column(db.String(128), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     is_active = db.Column(db.Boolean, default=False)
     is_use_api = db.Column(db.Boolean, default=False)
     def set_password(self, password):
@@ -71,7 +72,7 @@ class Streams(db.Model):
     deskripsi = db.Column(db.Text, nullable=False)
     kode_stream = db.Column(db.String(150), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now())
-    updated_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     start_at = db.Column(db.DateTime)
     end_at = db.Column(db.DateTime)
     is_repeat = db.Column(db.Boolean, default=False)
@@ -83,14 +84,23 @@ class Streams(db.Model):
     # duration from time delta
     duration = db.Column(db.Interval)
     is_active = db.Column(db.Boolean, default=False)
+
     def __repr__(self):
         return f'<Streams {self.judul}>'
+
     @property
     def end_at_str(self):
-        return self.end_at.strftime('%Y-%m-%d %H:%M')
+        return self.end_at.strftime('%Y-%m-%d %H:%M') if self.end_at else "N/A"
+
     @property
     def start_at_str(self):
-        return self.start_at.strftime('%Y-%m-%d %H:%M')
+        return self.start_at.strftime('%Y-%m-%d %H:%M') if self.start_at else "N/A"
+
+    
+    # check apakah stream ini siap untuk dijalankan sesuai jadwal
+    @property
+    def is_ready(self):
+        return (self.start_at and self.start_at < datetime.now() and not self.is_ended) or (self.is_repeat and not self.is_ended)
     
     @property
     def is_ended(self):
@@ -99,6 +109,21 @@ class Streams(db.Model):
     @property
     def is_started(self):
         return self.start_at and self.start_at < datetime.now()
+    
+    # check apakah stream ini sedang berjalan
+    @property
+    def is_running(self):
+        return self.pid is not None
+    
+    # check apakah stream harus dimulai
+    @property
+    def is_should_start(self):
+        return self.is_ready and not self.is_running
+    
+    # check apakah stream harus dihentikan
+    @property
+    def is_should_stop(self):
+        return self.is_ended and self.is_running
 
 class Oauth2Credentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -111,7 +136,7 @@ class Oauth2Credentials(db.Model):
     client_secret = db.Column(db.String(256))
     scopes = db.Column(db.String(256))
     created_at = db.Column(db.DateTime, default=datetime.now())
-    updated_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     def __repr__(self):
         return f'<Oauth2Credentials {self.user_id}>'
     

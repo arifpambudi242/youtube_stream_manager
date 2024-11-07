@@ -22,7 +22,7 @@ def check_scheduled_stream():
                 db.session.commit()
         for stream in streams:
             # start_at == current_time start stream
-            if not stream.is_active and stream.is_started:
+            if stream.is_should_start:
                 # check if stream is already started
                 stream_ = Streams.query.filter_by(id=stream.id).first()
                 # start stream
@@ -31,18 +31,17 @@ def check_scheduled_stream():
                 db.session.commit()
 
             # end_at == current_time stop stream
-            if stream.is_active and stream.is_ended:
+            if stream.is_should_stop:
                 stream_ = Streams.query.filter_by(id=stream.id).first()
-                if stream.is_started:
-                    # stop stream
-                    is_stream_alive = is_stream_started(stream_.pid)
-                    if is_stream_alive and stream_.pid:
-                        stopped = stop_stream_by_pid(stream_.pid)
-                        if stopped:
-                            print(f'stream stopped end at pid  {stream_.pid} ')
-                    stream_.pid = None
-                    stream_.is_active = False
-                    db.session.commit()
+                # stop stream
+                is_stream_alive = is_stream_started(stream_.pid)
+                if is_stream_alive and stream_.pid:
+                    stopped = stop_stream_by_pid(stream_.pid)
+                    if stopped:
+                        print(f'stream stopped end at pid  {stream_.pid} ')
+                stream_.pid = None
+                stream_.is_active = False
+                db.session.commit()
 
             sub = Subscription.query.filter_by(user_id=stream.user_id, is_active=True).first()
             if stream.is_active and not sub:
