@@ -795,6 +795,11 @@ def edit_stream(id):
             end_at = None
         else:
             end_at = datetime.strptime(end_at, '%Y-%m-%dT%H:%M')
+        
+        if end_at and start_at and end_at < start_at:
+            message = 'End at tidak boleh kurang dari start at' if is_indonesian_ip() else 'End at must not be less than start at'
+            flash(message, 'error')
+            return redirect(url_for('edit_stream', id=id))
         stream.judul = judul
         stream.deskripsi = deskripsi
         stream.kode_stream = kode_stream
