@@ -100,7 +100,7 @@ class Streams(db.Model):
     # check apakah stream ini siap untuk dijalankan sesuai jadwal
     @property
     def is_ready(self):
-        return (self.start_at and self.start_at < datetime.now() and not self.is_ended) or (self.is_repeat and not self.is_ended)
+        return self.start_at and ((self.start_at and self.start_at < datetime.now() and not self.is_ended) or (self.is_repeat and not self.is_ended))
     
     @property
     def is_ended(self):

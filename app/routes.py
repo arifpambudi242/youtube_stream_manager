@@ -556,21 +556,20 @@ def streams():
         video_id = request.form['video_id']
         is_repeat = request.form.get('is_repeat') == 'y'
         if judul == '':
-            flash('Judul tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Title must not be empty', 'error')
-            return redirect(url_for('streams'))
+            message = 'Judul tidak boleh kosong' if is_indonesian_ip() else 'Title must not be empty'
+            return jsonify({'status': 'error', 'message': message}), 400
         if deskripsi == '':
-            flash('Deskripsi tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Description must not be empty', 'error')
-            return redirect(url_for('streams'))
+            message = 'Deskripsi tidak boleh kosong' if is_indonesian_ip() else 'Description must not be empty'
+            return jsonify({'status': 'error', 'message': message}), 400
         if kode_stream == '':
             if not is_autorisasi:
-                flash('Kode stream tidak boleh kosong', 'error') if is_indonesian_ip() else flash('Stream code must not be empty', 'error')
-                return redirect(url_for('streams'))
+                message = "Kode stream tidak boleh kosong" if is_indonesian_ip() else "Stream code must not be empty"
+                return jsonify({'status': 'error', 'message': message}), 400
             else:
                 kode_stream = bind_broadcast_and_livestream(judul, deskripsi)
 
         if Videos.query.get(request.form['video_id']).user_id != int(get_session_user_id()):
-            flash('Anda tidak memiliki akses', 'error') if is_indonesian_ip() else flash('You do not have access', 'error')
-            return redirect(url_for('streams'))
+            message = 'Anda tidak memiliki akses' if is_indonesian_ip() else 'You do not have access'
         if start_at == '':
             # langsung mulai tanpa delay
             start_at = None
@@ -581,13 +580,18 @@ def streams():
             end_at = None
         else:
             end_at = datetime.strptime(end_at, '%Y-%m-%dT%H:%M')
+        
+        if end_at and start_at and end_at < start_at:
+            message = 'End at tidak boleh kurang dari start at' if is_indonesian_ip() else 'End at must not be less than start at'
+            return jsonify({'status': 'error', 'message': message}), 400
             
         stream = Streams(judul=judul, deskripsi=deskripsi, kode_stream=kode_stream, start_at=start_at, end_at=end_at, is_repeat=is_repeat, user_id=get_session_user_id(), video_id=video_id, pid=None, is_active=False)
         db.session.add(stream)
         db.session.commit()
         
-        flash('Stream berhasil dibuat', 'success') if is_indonesian_ip() else flash('Stream successfully created', 'success')
-        return redirect(url_for('streams'))
+        # flash('Stream berhasil dibuat', 'success') if is_indonesian_ip() else flash('Stream successfully created', 'success')
+        message = 'Stream berhasil dibuat' if is_indonesian_ip() else 'Stream successfully created'
+        return jsonify({'status': 'success', 'message': message}), 200
     return render_template('streams.html', form=form, streams=streams, videos=videos, is_autorisasi=is_autorisasi)
 
 def bind_broadcast_and_livestream(title, description):
@@ -705,6 +709,7 @@ def start_stream(id):
                 pid = start_stream_youtube(video.path, stream_key, repeat=stream.is_repeat)
                 stream.pid = pid
                 stream.start_at = datetime.now()
+                stream.end_at = None if stream.end_at is None else stream.end_at + timedelta(seconds=3600)
                 stream.is_active = True
                 db.session.commit()
                 message = 'Stream berhasil dimulai' if is_indonesian_ip() else 'Stream successfully started'

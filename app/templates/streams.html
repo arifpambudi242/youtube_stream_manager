@@ -285,6 +285,28 @@
             }
             {% endif %}
         });
+
+        $('form').on('submit', function (e) {
+            e.preventDefault();
+            const form = $(this);
+            $.ajax({
+                url: form.attr('action'),
+                method: form.attr('method'),
+                data: form.serialize(),
+                success: function (data) {
+                    if (data.status === 'success'){
+                        // sweet alert 2 notification
+                        Swal.fire("Success", data.message, "success").then((result) => {
+                                window.location.reload();
+                        });
+                    }
+                },
+                error: function (err) {
+                    var message = err.responseJSON.message;
+                    Swal.fire("Error", message, "error");
+                }
+            });
+        });
     });
 </script>
 {% endblock %}

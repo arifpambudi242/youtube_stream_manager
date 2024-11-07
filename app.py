@@ -23,6 +23,7 @@ def check_scheduled_stream():
         for stream in streams:
             # start_at == current_time start stream
             if stream.is_should_start:
+                print(f'stream harus dimulai {stream.judul} karena {stream.start_at} < {datetime.now()}')
                 # check if stream is already started
                 stream_ = Streams.query.filter_by(id=stream.id).first()
                 # start stream
