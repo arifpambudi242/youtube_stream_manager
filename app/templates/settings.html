@@ -35,6 +35,16 @@
             {% endif %}
         </div>
 
+        <!-- current_password -->
+        <div class="mb-3">
+            {{ form.current_password.label(class="form-label") }} <i class="bi bi-lock"></i>
+            <input type="password" name="current_password" class="form-control" placeholder="Password saat ini">
+            <!-- on error -->
+            {% if form.current_password.errors %}
+                <small class="text-danger">{{ form.current_password.errors[0] }}</small>
+            {% endif %}
+        </div>
+
         <!-- Password Field -->
         <div class="mb-3">
             {{ form.password.label(class="form-label") }} <i class="bi bi-lock"></i>

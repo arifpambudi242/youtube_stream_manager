@@ -1182,6 +1182,7 @@ def settings():
     if request.method == 'POST' and form.validate_on_submit():
         username = request.form['username']
         email = request.form['email']
+        current_password = request.form['current_password']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
         if username == '':
@@ -1192,6 +1193,12 @@ def settings():
             message = 'Email tidak boleh kosong' if is_indonesian_ip() else 'Email must not be empty'
             flash(message, 'error')
             return redirect(url_for('settings'))
+        # if current_password is not empty, then user want to change password
+        if current_password and current_password != '':
+            if not user.check_password(current_password):
+                message = 'Password lama salah' if is_indonesian_ip() else 'Old password is wrong'
+                flash(message, 'error')
+                return redirect(url_for('settings'))
         if password and password != '':
             if password != confirm_password:
                 message = 'Password dan konfirmasi password tidak sama' if is_indonesian_ip() else 'Password and password confirmation are not the same'
