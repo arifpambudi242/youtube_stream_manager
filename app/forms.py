@@ -91,5 +91,5 @@ class EditUserForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email(), Length(min=4, max=150)])
     current_password = PasswordField('Current Password', validators=[DataRequired(), Length(min=8, max=100)])
     password = PasswordField('Password', validators=[Length(min=8, max=100)])
-    password_confirm = PasswordField('Confirm Password', validators=[EqualTo('password', message='Passwords must match')])
+    confirm_password = PasswordField('Confirm Password', validators=[EqualTo('password', message='Passwords must match')])
     submit = SubmitField('Submit')

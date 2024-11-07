@@ -57,11 +57,11 @@
 
         <!-- Confirm Password Field -->
         <div class="mb-3">
-            {{ form.password_confirm.label(class="form-label") }} <i class="bi bi-lock-fill"></i>
-            <input type="password" name="password_confirm" class="form-control" placeholder="Konfirmasi password baru">
+            {{ form.confirm_password.label(class="form-label") }} <i class="bi bi-lock-fill"></i>
+            <input type="password" name="confirm_password" class="form-control" placeholder="Konfirmasi password baru">
             <!-- on error -->
-            {% if form.password_confirm.errors %}
-                <small class="text-danger">{{ form.password_confirm.errors[0] }}</small>
+            {% if form.confirm_password.errors %}
+                <small class="text-danger">{{ form.confirm_password.errors[0] }}</small>
             {% endif %}
         </div>
 
