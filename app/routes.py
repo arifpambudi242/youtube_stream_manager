@@ -732,7 +732,8 @@ def delete_stream(id):
     user = User.query.get(get_session_user_id())
     if stream.user_id == int(get_session_user_id() or user.is_admin):
         if stream.pid:
-            stop_stream_by_pid(stream.pid)
+            message = 'Stream sedang berjalan' if is_indonesian_ip() else 'Stream is running'
+            return jsonify({'status': 'error', 'message': message}), 400
         db.session.delete(stream)
         db.session.commit()
         message = 'Stream berhasil dihapus' if is_indonesian_ip() else 'Stream successfully deleted'
