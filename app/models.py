@@ -100,15 +100,15 @@ class Streams(db.Model):
     # check apakah stream ini siap untuk dijalankan sesuai jadwal
     @property
     def is_ready(self):
-        return self.start_at and ((self.start_at and self.start_at < datetime.now() and not self.is_ended) or (self.is_repeat and not self.is_ended))
+        return self.start_at and ((self.start_at and self.start_at < datetime.now() and not self.is_ended) or (self.is_repeat and not self.is_ended)) if self.start_at and self.end_at else False
     
     @property
     def is_ended(self):
-        return self.end_at and self.end_at < datetime.now()
+        return self.end_at and self.end_at < datetime.now() if self.end_at else False
     
     @property
     def is_started(self):
-        return self.start_at and self.start_at < datetime.now()
+        return self.start_at and self.start_at < datetime.now() if self.start_at else False
     
     # check apakah stream ini sedang berjalan
     @property
@@ -118,12 +118,12 @@ class Streams(db.Model):
     # check apakah stream harus dimulai
     @property
     def is_should_start(self):
-        return self.is_ready and not self.is_running
+        return self.is_ready and not self.is_running and self.start_at
     
     # check apakah stream harus dihentikan
     @property
     def is_should_stop(self):
-        return self.is_ended and self.is_running
+        return self.is_ended and self.is_running and self.end_at
 
 class Oauth2Credentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)
