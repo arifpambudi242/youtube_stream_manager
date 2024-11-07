@@ -1199,6 +1199,7 @@ def settings():
                 message = 'Password lama salah' if is_indonesian_ip() else 'Old password is wrong'
                 flash(message, 'error')
                 return redirect(url_for('settings'))
+            
         if password and password != '':
             if password != confirm_password:
                 message = 'Password dan konfirmasi password tidak sama' if is_indonesian_ip() else 'Password and password confirmation are not the same'
