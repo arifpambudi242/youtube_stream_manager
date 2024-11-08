@@ -100,30 +100,48 @@ class Streams(db.Model):
     # check apakah stream ini siap untuk dijalankan sesuai jadwal
     @property
     def is_ready(self):
-        return self.start_at and ((self.start_at and self.start_at < datetime.now() and not self.is_ended) or (self.is_repeat and not self.is_ended)) if self.start_at and self.end_at else False
+        if self.start_at:
+            now = datetime.now()
+            # Menghitung selisih waktu dari start_at ke waktu sekarang
+            time_diff = self.start_at - now
+            
+            # Jika waktu stream dimulai dalam rentang 2 detik hingga 20 detik ke depan
+            if timedelta(seconds=-2) <= time_diff <= timedelta(seconds=20):
+                return True
+            else:
+                return False
+        else:
+            return False
+
     
     @property
     def is_ended(self):
-        return self.end_at and self.end_at < datetime.now() if self.end_at else False
+        if self.end_at:
+            return self.end_at < datetime.now()
+        else:
+            return False
     
     @property
     def is_started(self):
-        return self.start_at and self.start_at < datetime.now() if self.start_at else False
+        if self.start_at:
+            return self.start_at < datetime.now()
+        else:
+            return False
     
     # check apakah stream ini sedang berjalan
     @property
     def is_running(self):
-        return self.pid is not None
+        return self.pid is not None or self.is_active
     
     # check apakah stream harus dimulai
     @property
     def is_should_start(self):
-        return self.is_ready and not self.is_running and self.start_at is not None
+        return self.is_ready and not self.is_running and not self.is_ended
     
     # check apakah stream harus dihentikan
     @property
     def is_should_stop(self):
-        return self.is_ended and self.is_running and self.end_at is not None and self.is_active
+        return self.is_running and self.is_ended
 
 class Oauth2Credentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -5,14 +5,25 @@ from app.models import Streams, User, seed, Subscription
 import os
 
 
+
 # cron job check scheduled stream needs to action
 def check_scheduled_stream():
     '''
     Check scheduled stream every 10 seconds
     whether stream is start or stop
     '''
+    
     with app.app_context():  # Menambahkan konteks aplikasi
+            
         streams = Streams.query.all()
+        list_pids = list_ffmpeg_processes()
+        for pid in list_pids:
+            # if pid not in streams
+            is_stream = Streams.query.filter_by(pid=pid.pid).first()
+            if not is_stream:
+                print(f'pid {pid.pid} not in streams')
+                pid.terminate()
+            
         subscription = Subscription.query.all()
         for sub in subscription:
             if sub.is_ended and sub.is_active:
@@ -45,7 +56,7 @@ def check_scheduled_stream():
                 db.session.commit()
 
             sub = Subscription.query.filter_by(user_id=stream.user_id, is_active=True).first()
-            if stream.is_active and not sub:
+            if stream.is_running and not sub:
                 stream_ = Streams.query.filter_by(id=stream.id).first()
                 # check if stream is already started
                 if stream_.is_started:
@@ -59,7 +70,7 @@ def check_scheduled_stream():
                     db.session.commit()
             else:
                 # update duration
-                if stream.is_active:
+                if stream.is_running:
                     stream_ = Streams.query.filter_by(id=stream.id).first()
                     if not stream_.start_at:
                         stream_.start_at = datetime.now()
