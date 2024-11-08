@@ -118,12 +118,12 @@ class Streams(db.Model):
     # check apakah stream harus dimulai
     @property
     def is_should_start(self):
-        return self.is_ready and not self.is_running and self.start_at
+        return self.is_ready and not self.is_running and self.start_at is not None
     
     # check apakah stream harus dihentikan
     @property
     def is_should_stop(self):
-        return self.is_ended and self.is_running and self.end_at
+        return self.is_ended and self.is_running and self.end_at is not None and self.is_active
 
 class Oauth2Credentials(db.Model):
     id = db.Column(db.Integer, primary_key=True)

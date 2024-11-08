@@ -48,7 +48,7 @@ def check_scheduled_stream():
             if stream.is_active and not sub:
                 stream_ = Streams.query.filter_by(id=stream.id).first()
                 # check if stream is already started
-                if stream_.is_started():
+                if stream_.is_started:
                     # stop stream
                     is_stream_alive = is_stream_started(stream_.pid)
                     if is_stream_alive and stream_.pid:
@@ -61,6 +61,8 @@ def check_scheduled_stream():
                 # update duration
                 if stream.is_active:
                     stream_ = Streams.query.filter_by(id=stream.id).first()
+                    if not stream_.start_at:
+                        stream_.start_at = datetime.now()
                     stream.duration = datetime.now() - stream.start_at
                     db.session.commit()
             
