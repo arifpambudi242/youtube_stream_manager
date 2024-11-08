@@ -63,8 +63,10 @@ def check_scheduled_stream():
                     stream_ = Streams.query.filter_by(id=stream.id).first()
                     if not stream_.start_at:
                         stream_.start_at = datetime.now()
-                    stream.duration = datetime.now() - stream.start_at
-                    db.session.commit()
+                        db.session.commit()
+                    if stream_.start_at:
+                        stream.duration = datetime.now() - stream.start_at
+                        db.session.commit()
             
             
 
