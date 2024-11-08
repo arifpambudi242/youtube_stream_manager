@@ -527,6 +527,21 @@ def edit_video(id):
         return redirect(url_for('edit_video', id=id))
     return render_template('edit_video.html', form=form, video=video)
 
+# download_video
+@app.route('/download_video/<int:id>', methods=['GET'])
+@login_required
+def download_video(id):
+    video = Videos.query.get(id)
+    user_id = int(get_session_user_id())
+    user = User.query.get(user_id)
+    if video.user_id == user_id or user.is_admin:
+        message = 'Video berhasil diunduh' if is_indonesian_ip() else 'Video successfully downloaded'
+        path = url_for('static', filename=video.path)
+        return jsonify({'status': 'success', 'path': path, 'message': message}), 200
+    else:
+        flash('Anda tidak memiliki akses', 'error') if is_indonesian_ip() else flash('You do not have access', 'error')
+        return redirect(url_for('videos'))
+
 # streams
 @app.route('/streams', methods=['GET', 'POST'])
 @login_required
