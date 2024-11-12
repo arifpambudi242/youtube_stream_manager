@@ -2,6 +2,11 @@
 {% block content %}
 <h1>🎥 Streams 🎶</h1>
 <p>Manage your Streams with ease</p>
+<!-- time digital -->
+<small>{% if is_indonesia %} Waktu anda {% else %} Your time {% endif %}</small>
+<p id="time" class="text-primary">{{ current_client_time }} </p>
+<small>{% if is_indonesia %} Waktu server {% else %} Server time {% endif %}</small>
+<p id="time" class="text-primary">{{ current_server_time }} </p>
 
 <!-- alert if flash -->
 {% with messages = get_flashed_messages(with_categories=True) %}

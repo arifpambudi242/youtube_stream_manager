@@ -4,6 +4,8 @@ import time
 import re
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from functools import wraps, lru_cache
+
+import pytz
 from app import *
 from cryptography.fernet import Fernet
 from datetime import datetime, timedelta
@@ -95,6 +97,25 @@ class BlankUser:
         self.email = ''
 
 
+def get_ip_time():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip = ip.split(',')[0] if ',' in ip else ip
+    ip_info = get_ip_info(ip)
+    if ip_info:
+        try:
+            return ip_info['timezone']
+        except KeyError:
+            pass
+    return 'Asia/Jakarta'
+
+def current_time():
+    ip_time = get_ip_time()
+    time_zone = pytz.timezone(ip_time)
+    return datetime.now(time_zone)
+
+def current_server_time():
+    return datetime.now()
+
 
 # inject data to template
 @app.context_processor
@@ -102,6 +123,8 @@ def inject_data():
     # is user logged in
     user = None
     is_indonesia = is_indonesian_ip()
+    current_client_time = current_time()
+    server_time = current_server_time()
     if key:
         try:
             user_id = get_session_user_id()
@@ -113,7 +136,7 @@ def inject_data():
                 user = BlankUser()
         except:
             pass
-    return dict(user=user, is_admin=user.is_admin if user else False, is_indonesia=is_indonesia)
+    return dict(user=user, is_admin=user.is_admin if user else False, is_indonesia=is_indonesia, current_client_time=current_client_time, current_server_time=server_time)
 
 @app.route('/')
 def index():
