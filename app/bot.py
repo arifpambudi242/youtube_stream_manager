@@ -7,31 +7,30 @@ import psutil
 
 def stream_to_youtube(video_path, stream_key, repeat=True):
     video_path = f'app/static/{video_path}'.replace('\\', '/')
-    youtube_rtmp_url = f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'  # Customize stream_key as needed
-    
+    youtube_rtmp_url = f'rtmp://a.rtmp.youtube.com/live2/{stream_key}'  # Ganti stream_key sesuai kebutuhan
     print(f'Streaming {video_path} to {youtube_rtmp_url}{" in loop" if repeat else ""}...')
+    command = [
+        'ffmpeg',
+        '-re',  # Membaca input sesuai kecepatan frame asli
+        '-i', f"{video_path}",  # Jalur video input
+        '-c:v', 'libx264',  # Codec video
+        '-b:v', '4500k',  # Bitrate video sesuai rekomendasi YouTube
+        '-maxrate', '6500k',  # Bitrate maksimal
+        '-bufsize', '6000k',  # Ukuran buffer
+        '-pix_fmt', 'yuv420p',  # Format pixel
+        '-g', '50',  # Ukuran grup gambar (keyframe)
+        '-c:a', 'aac',  # Codec audio
+        '-b:a', '160k',  # Bitrate audio
+        '-f', 'flv',  # Format output RTMP
+        youtube_rtmp_url  # URL RTMP tujuan streaming
+    ]
 
-    # Construct the ffmpeg-python command
-    stream = (
-        ffmpeg
-        .input(video_path, stream_loop=-1 if repeat else None, re=True)  # Set looping and reading rate
-        .output(
-            youtube_rtmp_url,
-            c_v='libx264',         # Video codec
-            preset='veryfast',     # Encoding speed
-            maxrate='3000k',       # Maximum bitrate
-            bufsize='6000k',       # Buffer size
-            pix_fmt='yuv420p',     # Pixel format
-            g=50,                  # Group of pictures size (keyframe interval)
-            c_a='aac',             # Audio codec
-            b_a='160k',            # Audio bitrate
-            f='flv'                # Output format for RTMP
-        )
-        .global_args('-y')  # Overwrite output files without asking
-    )
+    if repeat:
+        command.insert(1, '-stream_loop')
+        command.insert(2, '-1')
 
-    # Run the process asynchronously to allow interaction
-    process = stream.run_async(pipe_stdout=True, pipe_stderr=True, pipe_stdin=True)
+    # subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, shell=False) make it possible to get error message
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, shell=False)
     return process
     
 
