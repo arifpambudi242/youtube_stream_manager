@@ -11,18 +11,10 @@ def stream_to_youtube(video_path, stream_key, repeat=True):
     print(f'Streaming {video_path} to {youtube_rtmp_url}{" in loop" if repeat else ""}...')
     command = [
         'ffmpeg',
-        '-re',  # Membaca input sesuai kecepatan frame asli
+        '-readrate', '1.2',  # Membaca input dengan kecepatan 1x
         '-i', f"{video_path}",  # Jalur video input
-        '-c:v', 'libx264',  # Codec video
-        '-b:v', '4500k',  # Bitrate video sesuai rekomendasi YouTube
-        '-maxrate', '6500k',  # Bitrate maksimal
-        '-bufsize', '9000k',  # Ukuran buffer
-        '-pix_fmt', 'yuv420p',  # Format pixel
-        '-preset', 'ultrafast',  # Preset encoding
-        '-g', '60',  # Group of pictures (frame key) setiap detik
-        '-ac', '2',  # Audio channel
-        '-c:a', 'aac',  # Codec audio
-        '-b:a', '160k',  # Bitrate audio
+        '-acodec', 'copy',  # Copy codec audio
+        '-vcodec', 'copy',  # Copy codec video
         '-f', 'flv',  # Format output RTMP
         youtube_rtmp_url  # URL RTMP tujuan streaming
     ]
@@ -30,6 +22,9 @@ def stream_to_youtube(video_path, stream_key, repeat=True):
     if repeat:
         command.insert(1, '-stream_loop')
         command.insert(2, '-1')
+    
+    # the commands would be like this:
+    # ffmpeg -re -i {video_path} -acodec copy -vcodec copy -f flv {youtube_rtmp}
 
     # subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, shell=False) make it possible to get error message
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, shell=False)
