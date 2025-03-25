@@ -1,6 +1,7 @@
 # __init__.py
-import eventlet
-eventlet.monkey_patch()
+import gevent
+from gevent import monkey
+monkey.patch_all()
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -34,8 +35,8 @@ app.config.from_object(Config)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Inisialisasi SocketIO
-socketio = SocketIO(app, async_mode='eventlet')
+# Inisialisasi SocketIO dengan gevent sebagai async_mode
+socketio = SocketIO(app, async_mode='gevent')
 
 # Inisialisasi scheduler untuk background task
 scheduler = BackgroundScheduler()

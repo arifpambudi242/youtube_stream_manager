@@ -21,6 +21,8 @@ Flask-SocketIO==5.4.1
 Flask-SQLAlchemy==3.1.1
 Flask-WTF==1.2.2
 future==1.0.0
+gevent==24.11.1
+gevent-websocket==0.10.1
 google-api-core==2.22.0
 google-api-python-client==2.151.0
 google-auth==2.35.0
@@ -62,6 +64,7 @@ requests==2.32.3
 requests-oauthlib==2.0.0
 rich==13.9.4
 rsa==4.9
+setuptools==78.0.2
 simple-websocket==1.1.0
 six==1.16.0
 SQLAlchemy==2.0.36
@@ -74,3 +77,5 @@ Werkzeug==3.0.5
 wrapt==1.16.0
 wsproto==1.2.0
 WTForms==3.2.1
+zope.event==5.0
+zope.interface==7.2
