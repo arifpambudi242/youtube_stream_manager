@@ -80,7 +80,8 @@ if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=check_scheduled_stream, trigger="interval", seconds=10)
     scheduler.start()
-    HOST = os.getenv("HOST")
+    HOST = os.getenv("HOST", '0.0.0.0')
+    PORT = os.getenv("PORT", 5000)
     with app.app_context():
         seed()
-    socketio.run(app, host=HOST, port=5000)
+    socketio.run(app, host=HOST, port=PORT)

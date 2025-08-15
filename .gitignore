@@ -10,3 +10,4 @@ instance
 *.pyd
 app/static/videos
 test*
+uv.lock
