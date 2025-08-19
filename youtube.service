@@ -1,0 +1,13 @@
+[Unit]
+Description=Penatausahaan
+After=network.target
+
+[Service]
+ExecStart=/home/whoami/youtube_stream_manager/.venv/bin/python /home/whoami/youtube_stream_manager/app.py
+WorkingDirectory=/home/whoami/youtube_stream_manager
+Restart=on-failure
+User=whoami
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
